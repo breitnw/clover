@@ -1,8 +1,9 @@
 module Main where
 
+import Control.Concurrent (threadDelay)
 import Control.Monad (unless, when)
 import Data.IORef
-import Data.Maybe (fromMaybe) -- Used for rendererName
+import Data.Maybe (fromMaybe)
 import Data.Word (Word64)
 import SDL3
 import System.Exit (exitFailure, exitSuccess)
@@ -92,6 +93,8 @@ eventLoop window renderer lastTime freq deltaTimeRef rectPosRef shouldQuitRef ke
   processEvents shouldQuitRef keyStates -- This will handle multiple events
   shouldQuit <- readIORef shouldQuitRef
   unless shouldQuit $ do
+    threadDelay 100000
+
     -- Update game logic based on current key states and delta time
     updateGameLogic rectPosRef deltaTimeRef keyStates
 
