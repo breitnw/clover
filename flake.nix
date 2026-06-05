@@ -23,10 +23,10 @@
           sdl3 = hp.callCabal2nix
             "sdl3"
             (pkgs.fetchFromGitHub {
-              owner = "klukaszek";
+              owner = "breitnw";
               repo = "sdl3-hs";
-              rev = "d4a6b6e21f48cafb40028537a6cc9f55aa0943d3";
-              sha256 = "sha256-0t4JcElzPLM4LmaJvn8S6VF1bdkeHoIbZcTSaPAynGI=";
+              rev = "eacde89316d1112e4d737833d4dbf02142490ada";
+              sha256 = "sha256-Ig1Tx3ccc4NOa3hKkQ5lx/3hnvAM4o34cE95DYalmlk=";
             })
             { SDL3 = pkgs-unstable.sdl3.dev; };
         };

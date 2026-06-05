@@ -1,6 +1,7 @@
 source-repository-package
     type: git
-    location: https://github.com/klukaszek/sdl3-hs
+    location: https://github.com/breitnw/sdl3-hs.git
+    tag: eacde89316d1112e4d737833d4dbf02142490ada
 
 flags: -pkgconfig
 
