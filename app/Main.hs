@@ -4,7 +4,6 @@ import Control.Monad (unless, when)
 import Data.IORef
 import Data.Maybe (fromMaybe) -- Used for rendererName
 import Data.Word (Word64)
-import Image (loadImage)
 import SDL3
 import System.Exit (exitFailure, exitSuccess)
 import Text.Printf (printf)
