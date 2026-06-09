@@ -164,7 +164,8 @@ main = do
     exitFailure
 
   -- Create a window
-  window <- sdlCreateWindow "clover" 400 400 [SDL_WINDOW_TRANSPARENT, SDL_WINDOW_BORDERLESS]
+  window <-
+    sdlCreateWindow "clover" 400 400 [SDL_WINDOW_TRANSPARENT, SDL_WINDOW_BORDERLESS]
   case window of
     Nothing -> do
       sdlLog "Failed to create window!"
@@ -248,7 +249,17 @@ runApp win renderer = do
   sdlLog "Window destroyed."
 
 -- | Main event loop
-eventLoop :: SDLWindow -> SDLRenderer -> Word64 -> Word64 -> IORef Double -> IORef SDLFPoint -> IORef Bool -> KeyStates -> SDLTexture -> IO ()
+eventLoop
+  :: SDLWindow
+  -> SDLRenderer
+  -> Word64
+  -> Word64
+  -> IORef Double
+  -> IORef SDLFPoint
+  -> IORef Bool
+  -> KeyStates
+  -> SDLTexture
+  -> IO ()
 eventLoop window renderer lastTime freq deltaTimeRef rectPosRef shouldQuitRef keyStates im = do
   currentTime <- sdlGetPerformanceCounter
   let deltaTimeInSeconds = fromIntegral (currentTime - lastTime) / fromIntegral freq
@@ -268,7 +279,16 @@ eventLoop window renderer lastTime freq deltaTimeRef rectPosRef shouldQuitRef ke
     renderFrame renderer rectPosRef im
 
     -- Continue loop
-    eventLoop window renderer currentTime freq deltaTimeRef rectPosRef shouldQuitRef keyStates im
+    eventLoop
+      window
+      renderer
+      currentTime
+      freq
+      deltaTimeRef
+      rectPosRef
+      shouldQuitRef
+      keyStates
+      im
 
 -- | Process all pending events from the queue for the current frame
 processEvents :: IORef Bool -> KeyStates -> IO ()
@@ -341,8 +361,14 @@ updateGameLogic rectPosRef deltaTimeRef (upRef, downRef, leftRef, rightRef) = do
   --                 (show up) (show down) (show left) (show right) dtSec moveAmount
 
   SDLFPoint currentX currentY <- readIORef rectPosRef
-  let newX | left = currentX - moveAmount | right = currentX + moveAmount | otherwise = currentX
-  let newY | up = currentY - moveAmount | down = currentY + moveAmount | otherwise = currentY
+  let newX
+        | left = currentX - moveAmount
+        | right = currentX + moveAmount
+        | otherwise = currentX
+  let newY
+        | up = currentY - moveAmount
+        | down = currentY + moveAmount
+        | otherwise = currentY
 
   when (newX /= currentX || newY /= currentY) $
     writeIORef rectPosRef (SDLFPoint newX newY)
