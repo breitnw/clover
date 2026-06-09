@@ -3,6 +3,11 @@ source-repository-package
     location: https://github.com/breitnw/sdl3-hs.git
     tag: eacde89316d1112e4d737833d4dbf02142490ada
 
+source-repository-package
+    type: git
+    location: https://github.com/breitnw/libmpd-haskell.git
+    tag: 9e2bcccf8a9c3b2bdcff9ae466e69715a5b05544
+
 flags: -pkgconfig
 
 packages: ./clover.cabal
