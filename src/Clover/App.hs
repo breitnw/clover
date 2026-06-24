@@ -1,4 +1,4 @@
-module Main where
+module Clover.App where
 
 -- TODO can maybe just check the first chunk of the album art against some hash
 -- to see if we already have it cached
@@ -22,8 +22,11 @@ import Foreign.Ptr
 import Text.Printf (printf)
 
 -- Libraries
+
+import Clover.Backend.Class
 import qualified Codec.Image.STB as STB
 import qualified Data.Bitmap as BMP
+import GHC.Base (List)
 import qualified Network.MPD as MPD
 import SDL3 hiding (offset)
 
@@ -32,81 +35,7 @@ import SDL3 hiding (offset)
 -- Key state IORefs type alias for clarity
 type KeyStates = (IORef Bool, IORef Bool, IORef Bool, IORef Bool) -- Up, Down, Left, Right
 
--- song fetchers ---------------------------------------------------------------
-
-data Song = Song
-  { title :: String
-  , artist :: String
-  , album :: String
-  , filePath :: MPD.Path
-  }
-  deriving (Show)
-
-toSongWithPlaceholders :: MPD.Song -> Song
-toSongWithPlaceholders s =
-  Song
-    { title = getTagStr MPD.Title "Unknown Title"
-    , artist = getTagStr MPD.Artist "Unknown Artist"
-    , album = getTagStr MPD.Album "Unknown Artist"
-    , filePath = MPD.sgFilePath s
-    }
-  where
-    tags = MPD.sgTags s
-    getTagStr :: MPD.Metadata -> String -> String
-    getTagStr tag defaultStr =
-      maybe
-        defaultStr
-        (MPD.toString . head)
-        (tags !? tag)
-
-currentSongInfo :: MPD.MPD (Maybe Song)
-currentSongInfo = fmap toSongWithPlaceholders <$> MPD.currentSong
-
 -- artwork fetchers ------------------------------------------------------------
-
--- TODO make this an ExceptT to collect user errors, display later?
--- depends on whether server should die if there is an unexpected error
-
--- | Get the album artwork of the song at the given uri as raw bytes
-getArtwork :: MPD.Path -> MPD.MPD (Either String BS.ByteString)
-getArtwork path = (Right <$> go BS.empty path) `catchError` handler
-  where
-    handler :: MPD.MPDError -> MPD.MPD (Either String BS.ByteString)
-    handler (MPD.ACK MPD.FileNotFound _) = do
-      return $ Left "Album artwork not found"
-    handler e = throwError e
-
-    go :: BS.ByteString -> MPD.Path -> MPD.MPD BS.ByteString
-    go acc uri = do
-      -- query mpd for the chunk
-      let offset = BS.length acc
-      (MPD.AlbumArtChunk fileSize' bytes) <- MPD.albumArt uri (fromIntegral offset)
-      let fileSize = fromInteger fileSize'
-      let chunkSize = BS.length bytes
-      -- report progress
-      liftIO $
-        putStrLn $
-          "progress: "
-            ++ show (div (100 * (offset + chunkSize)) fileSize)
-            ++ "%"
-      -- append to the string and repeat
-      let acc' = acc <> bytes
-      if offset + chunkSize >= fileSize
-        then return acc'
-        else go acc' uri
-
--- TODO would be better if this were an ExceptT, wouldn't need the cases
--- any way to do this without ExceptT?
-
--- | Get the album artwork of the song at the given uri as a bitmap
-getArtworkBitmap :: MPD.Path -> MPD.MPD (Either String STB.Image)
-getArtworkBitmap uri = do
-  bytes' <- getArtwork uri
-  case bytes' of
-    Left err -> return $ Left err
-    Right bytes -> liftIO $ STB.decodeImage bytes
-
--- based on https://github.com/DanielGibson/Snippets/blob/master/SDL_stbimage.h#L337
 
 -- | Convert an STB image to an SDL surface
 toSurface :: STB.Image -> IO (Maybe (Ptr SDLSurface))
@@ -129,9 +58,10 @@ toSurface bmp = BMP.withBitmap bmp go
 -- TODO use bilinearResample to scale bitmaps to the same size??
 
 -- | Get the album artwork of the song at the given uri as a SDL surface
-getArtworkSurface :: MPD.Path -> MPD.MPD (Either String (Ptr SDLSurface))
-getArtworkSurface uri = do
-  bmp' <- getArtworkBitmap uri
+getArtworkSurface
+  :: MonadBackend m => TrackID m -> MPD.MPD (Either String (Ptr SDLSurface))
+getArtworkSurface tid = do
+  bmp' <- getArtwork tid
   case bmp' of
     Left err -> return $ Left err
     Right bmp -> liftIO $ do
@@ -227,7 +157,7 @@ runApp win renderer = do
   -- Just tex <- sdlCreateTextureFromSurface renderer im
   -- TODO cleanup (sdlQuit and destroy resources) if these fail
 
-  _ <- sdlSetWindowShape win im
+  -- _ <- sdlSetWindowShape win im
 
   eventLoop
     win
