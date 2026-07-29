@@ -15,24 +15,51 @@ import Control.Monad.IO.Class
 import qualified Codec.Image.STB as STB
 import qualified Data.ByteString as BS
 import qualified Network.MPD as MPD
+import qualified Network.MPD.Core as Core
 
 -- class instance --------------------------------------------------------------
 
-newtype MPDError = MPDError {getError :: MPD.MPDError}
+-- | thin wrapper around MPD.MPD
+newtype MPDBackend a = MPDBackend {runMPD :: MPD.MPD a}
+  deriving (Functor, Applicative, Monad, MonadIO)
 
--- | thin wrapper around MPD with expected error type
-newtype MPDBackend a = MPDBackend {runMPD :: ExceptT BackendError MPD.MPD a}
-  deriving (Functor, Applicative, Monad, MonadIO, MonadError MPDError)
+{-
 
-instance IntoBackendError MPD.MPDError where
-  intoBackendError err = Unknown $ show err
+instance MonadError MPD.MPDError m => MonadError BackendError m where
+  -- NOTE Do not use?? i think
+  throwError FileMissing = _
+  throwError e = _
 
-instance MonadBackend MPD.MPDError MPDBackend where
+  m `catchError` handler =
+    MPDBackend $ runMPD m `catchError` (runMPD . handler . toBackendError)
+    where
+      toBackendError :: MPD.MPDError -> BackendError
+      toBackendError MPD.NoMPD = NoBackend
+      toBackendError (MPD.ConnectionError e) = ConnectionError e
+      -- toBackendError
+      toBackendError e = Unexpected $ show e
+
+-- TODO use mapError?
+
+-}
+
+instance MonadBackend MPDBackend MPD.MPDError where
   type TrackID MPDBackend = MPD.Path
-  currentSongID = _
-  getInfo = _
+  currentSongID = mbCurrentSong
+  getInfo = mbGetInfo
   getArtwork = _
   sendCommand = _
+
+mpdbCurrentSong :: MPDBackend (Maybe MPD.Path)
+mpdbCurrentSong = MPDBackend $ fmap MPD.sgFilePath <$> MPD.currentSong
+
+-- TODO don't use head, throw error if missing?
+mpdbGetInfo :: MPD.Path -> MPDBackend (Track MPD.Path)
+mpdbGetInfo path = MPDBackend $ toTrack . head <$> MPD.find (MPD.qFile path)
+
+-- mbGetArtwork
+
+-- converters ------------------------------------------------------------------
 
 -- | Convert a MPD song into a Clover track
 toTrack :: MPD.Song -> Track MPD.Path
@@ -52,15 +79,7 @@ toTrack s =
         (MPD.toString . head)
         (tags !? tag)
 
--- song fetchers ---------------------------------------------------------------
-
-getInfo :: MPD.Path -> MPD.MPD (Track MPD.Path)
-getInfo = fmap toSongWithPlaceholders <$> MPD.currentSong
-
--- TODO make this an ExceptT to collect user errors, display later?
--- depends on whether server should die if there is an unexpected error
-
--- artwork fetchers ------------------------------------------------------------
+-- artwork fetching ------------------------------------------------------------
 
 -- | Get the album artwork of the song at the given uri as raw bytes
 getArtworkBytes :: MPD.Path -> MPD.MPD (Either String BS.ByteString)
@@ -75,7 +94,7 @@ getArtworkBytes path = (Right <$> go BS.empty path) `catchError` handler
     go acc uri = do
       -- query mpd for the chunk
       let offset = BS.length acc
-      (MPD.AlbumArtChunk fileSize' bytes) <- MPD.albumArt uri (fromIntegral offset)
+      (MPD.AlbumArtChunk fileSize' _ bytes) <- MPD.albumArt uri (fromIntegral offset)
       let fileSize = fromInteger fileSize'
       let chunkSize = BS.length bytes
       -- report progress
@@ -96,7 +115,7 @@ getArtworkBytes path = (Right <$> go BS.empty path) `catchError` handler
 -- | Get the album artwork of the song at the given uri as a bitmap
 getArtworkBitmap :: MPD.Path -> MPD.MPD (Either String STB.Image)
 getArtworkBitmap uri = do
-  bytes' <- getArtwork uri
+  bytes' <- getArtworkBytes uri
   case bytes' of
     Left err -> return $ Left err
     Right bytes -> liftIO $ STB.decodeImage bytes
