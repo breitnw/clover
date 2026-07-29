@@ -29,8 +29,8 @@
         (pkgs.fetchFromGitHub {
           owner = "breitnw";
           repo = "libmpd-haskell";
-          rev = "9e2bcccf8a9c3b2bdcff9ae466e69715a5b05544";
-          sha256 = "sha256-TuaS5coVhsnCjlH1AGDHDA4JOBWa9DWDJA+/2d+3mBo=";
+          rev = "69a7bc37c17eb00c5df4b46f8b22103a01ca74f7";
+          sha256 = "sha256-4BvKHogqyo5hsAx2vbRD9El0gz0f22CvTffWnPSiXhY=";
         })
         {};
     in {
