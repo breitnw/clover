@@ -10,44 +10,69 @@ license-file:       LICENSE
 author:             Nick Breitling
 maintainer:         Nick Breitling <breitling.nw@gmail.com>
 copyright:          (c) 2026 Nick Breitling
-category:           Graphics
+category:           Graphics, Sound
 build-type:         Simple
 
 extra-doc-files:    CHANGELOG.md
 
+homepage:           https://github.com/breitnw/clover#readme
+bug-reports:        https://github.com/breitnw/clover/issues
+
+source-repository head
+  type:     git
+  location: https://github.com/breitnw/libmpd-effectful
+
 common warnings
     ghc-options: -Wall
 
+common language
+    default-language: Haskell2010
+    default-extensions:
+        FlexibleContexts
+        TypeApplications
+        GADTs
+        LambdaCase
+        TypeFamilies
+        TypeOperators
+        DataKinds
+        ConstraintKinds
+        ScopedTypeVariables
+
 library
-    import:           warnings
+    import:           warnings, language
     exposed:          False
     default-language: Haskell2010
     hs-source-dirs:   src, run
 
     build-depends: 
-      base >=4.16 && <5,
-      mtl,
-      bytestring,
-      containers,
-      bitmap,
-      stb-image ^>= 0.2.1,
-      sdl3 >= 0.1.0.0,
-      libmpd ^>=0.10.0.0
+      base              >=4.16 && <5,
+      filepath          >=1    && <2
+      text             ^>=2.1.4,
+      bytestring       ^>=0.12.2,
+      containers       ^>=0.8,
+      sdl3             ^>=0.1,
+      bitmap           ^>=0.0.2,
+      stb-image        ^>=0.2.1,
+      effectful        ^>=2.6.1,
+      libmpd-effectful ^>=0.1,
+      log-effectful    ^>=1.0.1
 
     exposed-modules: 
       Clover.App
 
     other-modules:
+      Clover.Util
       Clover.App.Monad
-      Clover.Backend
-      Clover.Backend.Class
+      Clover.Image
+      Clover.Renderer.Error
+      Clover.Renderer.Util
       Clover.Backend.Data
-      Clover.Backend.Error
+      Clover.Backend.Effect
       Clover.Backend.Impl.MPD
       Clover.Backend.Util.Cache
 
 executable clover
-    import:           warnings
+    import:           warnings, language
     default-language: Haskell2010
     main-is:          Main.hs
     hs-source-dirs:   src
