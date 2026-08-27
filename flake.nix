@@ -39,9 +39,9 @@
           owner = "breitnw";
           repo = "libmpd-effectful";
           rev = "breitnw-dev";
-          sha256 = "sha256-NLo1G9jsm60TAQyb6S6/JnXP47LIZOo2JAG8qjdFZ1U=";
+          sha256 = "sha256-vKY43A2N0B8GL9nK0zzxeH9fX9LyKjU3LVVroLoqf4w=";
         })
-        { };
+        { inherit libmpd; };
     in {
       packages.default = hp.developPackage {
         root = ./.;
