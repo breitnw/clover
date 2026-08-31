@@ -22,3 +22,6 @@ Clover is a tool for making your own music players and visualizers. It's heavily
 
 ### "It would be really awesome" widgets
 - Music video player, replaces album art if available, automatically fetched from YT (can layer FX)
+
+### Other stretch-goal features
+- Alternative backends (e.g., subsonic, streaming services, proprietary)
