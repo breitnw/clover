@@ -1,13 +1,33 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{- |
+Module      : Effectful.Renderer
+Copyright   : (c) Nick Breitling 2026
+License     : GPL v3 (see LICENSE)
+Maintainer  : Nick Breitling <breitling.nw@gmail.com>
+Stability   : unstable
+-}
 
-module Clover.App.Monad (
--- AppExit (..),
--- App,
--- currentWindow,
--- currentRenderer,
+module Effectful.Renderer where
 
-) where
+-- TODO Make into an effect?
+-- | Convert an STB image to an SDL surface
+--
+-- based on https://github.com/DanielGibson/Snippets/blob/master/SDL_stbimage.h#L337
+toSurface :: STB.Image -> IO (Maybe (Ptr SDLSurface))
+toSurface bmp = BMP.withBitmap bmp go
+  where
+    go (w, h) nchn _padding ptr =
+      sdlCreateSurfaceFrom
+        (fromIntegral w)
+        (fromIntegral h)
+        format
+        (castPtr ptr)
+        (fromIntegral pitch)
+      where
+        format = case nchn of
+          3 -> SDL_PIXELFORMAT_RGB24
+          4 -> SDL_PIXELFORMAT_RGBA32
+          _ -> SDL_PIXELFORMAT_RGB24 -- TODO MAKE UNREACHABLE
+        pitch = nchn * w
 
 {-
 

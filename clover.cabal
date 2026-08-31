@@ -28,6 +28,7 @@ common warnings
 common language
     default-language: Haskell2010
     default-extensions:
+        ImportQualifiedPost
         FlexibleContexts
         TypeApplications
         GADTs
@@ -46,7 +47,7 @@ library
 
     build-depends: 
       base              >=4.16 && <5,
-      filepath          >=1    && <2
+      filepath          >=1    && <2,
       text             ^>=2.1.4,
       bytestring       ^>=0.12.2,
       containers       ^>=0.8,
@@ -61,15 +62,17 @@ library
       Clover.App
 
     other-modules:
-      Clover.Util
-      Clover.App.Monad
-      Clover.Image
-      Clover.Renderer.Error
-      Clover.Renderer.Util
-      Clover.Backend.Data
-      Clover.Backend.Effect
-      Clover.Backend.Impl.MPD
-      Clover.Backend.Util.Cache
+      -- Utils
+      Util,
+      
+      -- Effects
+      Effectful.Backend,
+      Effectful.Backend.Handler.MPD,
+      Effectful.Backend.Types,
+      Effectful.Backend.Effect,
+
+      Effectful.Image,
+      Effectful.Renderer,
 
 executable clover
     import:           warnings, language

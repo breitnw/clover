@@ -1,37 +1,25 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
-module Clover.App where
+module Clover.App (main) where
 
 -- TODO can maybe just check the first chunk of the album art against some hash
 -- to see if we already have it cached
 
 import Control.Concurrent (threadDelay)
 import Control.Monad
-import Control.Monad.Error.Class
-import Control.Monad.Trans
-
-import qualified Data.ByteString as BS
 import Data.IORef
 import Data.Map
 import Data.Maybe (fromMaybe)
 import Data.Word (Word64)
-
+import Foreign.Ptr
 import System.Exit
 import System.IO
-
-import Foreign.Ptr
-
 import Text.Printf (printf)
 
--- Libraries
-
-import Clover.App.Monad (App)
-import Clover.Backend.Class
-import qualified Codec.Image.STB as STB
-import qualified Data.Bitmap as BMP
-import GHC.Base (List)
-import qualified Network.MPD as MPD
-import SDL3 hiding (offset)
+import Codec.Image.STB qualified as STB
+import Data.ByteString qualified as BS
+import Effectful.Network.MPD qualified as MPD
+import SDL3 qualified as SDL
 
 -- artwork fetchers ------------------------------------------------------------
 
