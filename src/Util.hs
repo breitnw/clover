@@ -7,8 +7,16 @@ Stability   : unstable
 
 Utilities for common patterns.
 -}
-module Util where
+module Util (
+  orElseDo,
+  rightToMaybe,
+) where
 
 -- | Run the first computation. If it fails, return the result of the second computation.
 orElseDo :: Monad m => m (Maybe a) -> m (Maybe a) -> m (Maybe a)
 orElseDo x y = x >>= maybe y (return . return)
+
+-- | Convert the right of an Either into a Maybe
+rightToMaybe :: Either a b -> Maybe b
+rightToMaybe (Right x) = Just x
+rightToMaybe _ = Nothing

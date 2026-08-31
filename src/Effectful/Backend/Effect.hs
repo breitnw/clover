@@ -6,12 +6,18 @@ Maintainer  : Nick Breitling <breitling.nw@gmail.com>
 Stability   : unstable
 -}
 module Effectful.Backend.Effect (
-  Backend,
+  Backend (..),
   currentSong,
   getSong,
   getArtwork,
-  sendArtwork,
+  sendCommand,
 ) where
+
+import Codec.Image.STB qualified as STB
+import Effectful
+import Effectful.Dispatch.Dynamic
+
+import Effectful.Backend.Types
 
 -- | Interface implemented by the music player backend.
 --

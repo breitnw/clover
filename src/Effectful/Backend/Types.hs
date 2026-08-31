@@ -8,9 +8,9 @@ Stability   : unstable
 Data definitions
 -}
 module Effectful.Backend.Types (
-  SongID,
+  SongID (..),
   Song (..),
-  Command,
+  Command (..),
 ) where
 
 import Data.Text (Text)

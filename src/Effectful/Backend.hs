@@ -9,11 +9,11 @@ module Effectful.Backend (
   -- * Effect
   module Effectful.Backend.Effect,
 
-  -- * Data
-  module Effectful.Backend.Data,
+  -- * Types
+  module Effectful.Backend.Types,
 ) where
 
-import Effectful.Backend.Data
 import Effectful.Backend.Effect
+import Effectful.Backend.Types
 
 -- TODO rename to Controller? or BackendController? or MusicBackend
