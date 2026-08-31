@@ -70,7 +70,7 @@ The module structure differs depending on whether the effect is statically or dy
 ### Dynamically-dispatched effects
 Dynamic effects should be defined in the following modules.
 
-- `Effectful.<effect>.Effect`: Exports the effect, as well as top level helper functions that execute effect operations using `send`. The constructors for the effect should _not_ be exported. Required.
+- `Effectful.<effect>.Effect`: Exports the effect, as well as top level helper functions that execute effect operations using `send`. Required.
 - `Effectful.<effect>.Handler.<handler>`: Exports the handler(s) for the effect. Required (at least one).
 - `Effectful.<effect>.Types`: Exports types specific to the effect (for example, the `Song` and `Command` types associated with the `Backend` effect). Optional.
 - `Effectful.<effect>.<helper>`: Exports actions derived from the effect's primitive actions. Optional (zero or more).
