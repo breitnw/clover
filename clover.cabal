@@ -72,7 +72,11 @@ library
       Effectful.Backend.Effect,
 
       Effectful.Image,
+
       Effectful.Renderer,
+      Effectful.Renderer.Effect,
+      Effectful.Renderer.Types,
+      Effectful.Renderer.Handler.SDL
 
 executable clover
     import:           warnings, language
