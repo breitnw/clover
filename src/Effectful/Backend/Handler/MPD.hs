@@ -141,7 +141,11 @@ asCloverSong s =
 
 -- ARTWORK HELPERS -------------------------------------------------------------
 
--- | Get the album artwork of the song at the given uri as raw bytes.
+-- TODO would Data.ByteString.Lazy be faster?
+-- Or alternatively, accumulate a list of strict ByteStrings before using `fromChunks`
+
+-- | Given a function to read a chunk of the artwork into a 'ByteString',
+-- retrieve the entire artwork
 getArtworkBytes
   :: forall es
    . (MPD.EMPD :> es, Error MPD.MPDError :> es, L.Log :> es)
