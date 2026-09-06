@@ -6,12 +6,11 @@ Maintainer  : Nick Breitling <breitling.nw@gmail.com>
 Stability   : unstable
 -}
 module Effectful.Renderer.Types (
-  RenderBackend (..),
-  Vec2,
+  Texture,
+  Vec2 (..),
 ) where
 
-class RenderBackend a where
-  data Texture a
+data family Texture a
 
 -- | A two-dimensional vector.
 data Num a => Vec2 a = Vec2 a a

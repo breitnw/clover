@@ -20,8 +20,8 @@
         (pkgs.fetchFromGitHub {
           owner = "breitnw";
           repo = "sdl3-hs";
-          rev = "main";
-          sha256 = "sha256-0t4JcElzPLM4LmaJvn8S6VF1bdkeHoIbZcTSaPAynGI=";
+          rev = "missing-video-exports";
+          sha256 = "sha256-Ig1Tx3ccc4NOa3hKkQ5lx/3hnvAM4o34cE95DYalmlk=";
         })
         { SDL3 = pkgs-unstable.sdl3.dev; };
       libmpd = hp.callCabal2nix
@@ -60,7 +60,7 @@
 
           # not required to `nix build` (since we override sdl3), but needed for
           # haskell-language-server (or cabal build) to work properly
-          # pkgs-unstable.sdl3
+          pkgs-unstable.sdl3
         ];
       };
     });

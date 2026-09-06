@@ -1,5 +1,5 @@
 {- |
-Module      : Effectful.Backend.Types
+Module      : Effectful.MusicPlayer.Types
 Copyright   : (c) Nick Breitling 2026
 License     : GPL v3 (see LICENSE)
 Maintainer  : Nick Breitling <breitling.nw@gmail.com>
@@ -7,7 +7,7 @@ Stability   : unstable
 
 Data definitions
 -}
-module Effectful.Backend.Types (
+module Effectful.MusicPlayer.Types (
   SongID (..),
   Song (..),
   Command (..),

@@ -6,7 +6,7 @@ Maintainer  : Nick Breitling <breitling.nw@gmail.com>
 Stability   : unstable
 -}
 module Effectful.Renderer.Effect (
-  Renderer (..),
+  Render (..),
   loadTexture,
   drawTexture,
 ) where
@@ -18,21 +18,21 @@ import Effectful.Dispatch.Dynamic
 import Effectful.Renderer.Types
 
 -- | Interface implemented by the rendering backend.
-data Renderer a :: Effect where
-  LoadTexture :: RenderBackend a => STB.Image -> Renderer a m (Texture a)
-  DrawTexture :: RenderBackend a => (Texture a) -> Coordinate -> Renderer a m ()
+data Render a :: Effect where
+  LoadTexture :: STB.Image -> Render a m (Texture a)
+  DrawTexture :: (Texture a) -> Vec2 Int -> Render a m ()
 
-type instance DispatchOf (Renderer t) = Dynamic
+type instance DispatchOf (Render t) = Dynamic
 
 loadTexture
-  :: (RenderBackend a, Renderer a :> es)
+  :: Render a :> es
   => STB.Image
   -> Eff es (Texture a)
 loadTexture = send . LoadTexture
 
 drawTexture
-  :: (RenderBackend a, Renderer a :> es)
+  :: Render a :> es
   => Texture a
-  -> Coordinate
+  -> Vec2 Int
   -> Eff es ()
 drawTexture tex coord = send $ DrawTexture tex coord

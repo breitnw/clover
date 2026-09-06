@@ -6,7 +6,7 @@ flags: -pkgconfig
 source-repository-package
     type: git
     location: https://github.com/breitnw/sdl3-hs.git
-    branch: main
+    branch: missing-video-exports
 
 -- source-repository-package
 --     type: git

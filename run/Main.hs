@@ -9,7 +9,7 @@ Trivial wrapper module around "Clover.App"
 -}
 module Main where
 
-import qualified Clover.App
+import Clover.App qualified
 
-main :: IO
+main :: IO ()
 main = Clover.App.main

@@ -1,11 +1,11 @@
 {- |
-Module      : Effectful.Image
+Module      : Effectful.ImageLoader
 Copyright   : (c) Nick Breitling 2026
 License     : GPL v3 (see LICENSE)
 Maintainer  : Nick Breitling <breitling.nw@gmail.com>
 Stability   : unstable
 -}
-module Effectful.Image (
+module Effectful.ImageLoader (
   -- * Effect
   LoadImages,
 

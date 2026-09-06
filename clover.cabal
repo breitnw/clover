@@ -43,7 +43,7 @@ library
     import:           warnings, language
     exposed:          False
     default-language: Haskell2010
-    hs-source-dirs:   src, run
+    hs-source-dirs:   src
 
     build-depends: 
       base              >=4.16 && <5,
@@ -66,12 +66,12 @@ library
       Util,
       
       -- Effects
-      Effectful.Backend,
-      Effectful.Backend.Handler.MPD,
-      Effectful.Backend.Types,
-      Effectful.Backend.Effect,
+      Effectful.MusicPlayer,
+      Effectful.MusicPlayer.Effect,
+      Effectful.MusicPlayer.Types,
+      Effectful.MusicPlayer.Handler.MPD,
 
-      Effectful.Image,
+      Effectful.ImageLoader,
 
       Effectful.Renderer,
       Effectful.Renderer.Effect,
@@ -82,7 +82,7 @@ executable clover
     import:           warnings, language
     default-language: Haskell2010
     main-is:          Main.hs
-    hs-source-dirs:   src
+    hs-source-dirs:   run
 
     build-depends:
       base >=4.16 && <5,

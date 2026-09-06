@@ -1,15 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 {- |
-Module      : Effectful.Backend.Handler.MPD
+Module      : Effectful.MusicPlayer.Handler.MPD
 Copyright   : (c) Nick Breitling 2026
 License     : GPL v3 (see LICENSE)
 Maintainer  : Nick Breitling <breitling.nw@gmail.com>
 Stability   : unstable
 
-MPD handler for the 'Effectful.Backend.Backend' effect.
+MPD handler for the 'Effectful.MusicPlayer.PlayMusic' effect.
 -}
-module Effectful.Backend.Handler.MPD where
+module Effectful.MusicPlayer.Handler.MPD where
 
 import Data.Map ((!?))
 import Data.String (fromString)
@@ -23,9 +23,9 @@ import Effectful.Error.Dynamic
 import Effectful.Log qualified as L
 import Effectful.Network.MPD qualified as MPD
 
-import Effectful.Backend.Effect
-import Effectful.Backend.Types
-import Effectful.Image
+import Effectful.ImageLoader
+import Effectful.MusicPlayer.Effect
+import Effectful.MusicPlayer.Types
 import Util
 
 -- EFFECT HANDLER --------------------------------------------------------------
@@ -33,14 +33,14 @@ import Util
 -- NOTE takes away the ability to catch errors... so all error handling can be
 -- dealt with outside the handler, I think?
 
-withMPDBackend
+withMPDPlayer
   :: (IOE :> es, L.Log :> es, LoadImages :> es)
   => MPD.Host
   -> MPD.Port
   -> MPD.Password
-  -> Eff (Backend : es) a
+  -> Eff (PlayMusic : es) a
   -> Eff es (Either MPD.MPDError a)
-withMPDBackend host port pw = reinterpret_ runMPD $ \case
+withMPDPlayer host port pw = reinterpret_ runMPD $ \case
   CurrentSong -> fmap asCloverSong <$> MPD.currentSong
   GetSong songId -> getSong' songId
   GetArtwork songId -> getArtwork' songId
