@@ -138,20 +138,33 @@ present' = do
   unless result $ warn "SDL failed to present frame"
 
 loadTexture'
-  :: (Reader SDLContext :> es, Error T.Text :> es, IOE :> es)
+  :: ( Reader SDLContext :> es
+     , L.Log :> es
+     , Error T.Text :> es
+     , IOE :> es
+     )
   => STB.Image
   -> Eff es (Texture SDL)
 loadTexture' im = do
   ren <- asks scRenderer
-  bracket createSurface (liftIO . SDL.sdlDestroySurface) $ \surf -> do
+  bracket openSurface closeSurface $ \surf -> do
     liftIO (SDL.sdlCreateTextureFromSurface ren surf) >>= \case
       Nothing -> throwError @T.Text "Failed to create texture from surface"
       Just tex -> return $ Texture tex
   where
-    createSurface = do
+    -- Create a surface from 'im'.
+    openSurface = do
+      -- TODO add surface name for logging?
+      L.logTrace_ "Creating surface"
       liftIO (createSurfaceFromImage im) >>= \case
         Nothing -> throwError @T.Text "Failed to create surface from image"
         Just surf -> return surf
+
+    -- Destroy the provided surface.
+    closeSurface surf = do
+      -- TODO add surface name for logging?
+      L.logTrace_ "Destroying surface"
+      liftIO $ SDL.sdlDestroySurface surf
 
 drawTexture'
   :: (Reader SDLContext :> es, L.Log :> es, IOE :> es)
