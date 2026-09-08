@@ -1,3 +1,4 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Clover.App (main) where
@@ -6,33 +7,15 @@ module Clover.App (main) where
 -- to see if we already have it cached
 
 import System.Exit (exitFailure, exitSuccess)
-import Text.Printf (printf)
 
 import Data.Text qualified as T
 import Effectful
+import Effectful.Concurrent
 
 import Effectful.ImageLoader
 import Effectful.Log qualified as L
 import Effectful.Renderer
 import Effectful.Renderer.Handler.SDL
-
--- artwork fetchers ------------------------------------------------------------
-
--- TODO use bilinearResample to scale bitmaps to the same size??
-
--- | Get the album artwork of the song at the given uri as a SDL surface
---
--- Returns an error if failed to allocate the surface
--- getArtworkSurface
---   :: (MonadBackend e m, MonadIO m)
---   => TrackID m
---   -> m (Either String (Ptr SDLSurface))
--- getArtworkSurface trackId = do
---   bmp <- getArtwork trackId
---   maybeSurf <- liftIO $ toSurface bmp
---   return $ case maybeSurf of
---     Nothing -> Left "could not load surface"
---     Just surf -> return surf
 
 -- app logic -------------------------------------------------------------------
 
@@ -42,31 +25,51 @@ printLogMessage msg = do
 
 -- | Initialize and run the application
 main :: IO ()
-main = runEff $ do
+main = runEff . runConcurrent $ do
   logger <- liftIO $ L.mkLogger "clover logger" printLogMessage
   L.runLog "clover" logger L.LogTrace $ do
-    let runGraphics =
-          runLoadImages
-            . withSDLRenderer (Vec2 100 100) "clover window"
-    appResult <- runGraphics app
+    let runSDL = withSDLRenderer (Vec2 261 261) "clover window"
+    appResult <- (runSDL . runConcurrent . runLoadImages) (app @SDL)
     case appResult of
-      Right () -> liftIO exitSuccess
+      Right _ -> liftIO exitSuccess
       Left msg -> do
-        L.logAttention_ $ T.pack ("SDL ERROR:" ++ msg)
+        L.logAttention_ $ T.append "[ERROR] " msg
         liftIO exitFailure
 
 app
-  :: (Render a :> es, LoadImages :> es, L.Log :> es)
-  => a
-  -> Eff es ()
-app tex = do
-  loadImagePath "data/scan.bmp" >>= \case
-    Left err -> do
-      L.logAttention_ "Unable to load image!"
-      return ()
+  :: forall a es
+   . ( Render a :> es
+     , LoadImages :> es
+     , L.Log :> es
+     )
+  => Eff es ()
+app = do
+  loadImagePath "data/noa-small.png" >>= \case
     Right im -> do
-      tex <- loadTexture im
-      drawTexture tex (Vec2 0 0)
+      tex <- loadTexture @a im
+      L.logTrace_ "Entering loop"
+      loop tex
+    Left err -> do
+      L.logAttention_ (T.pack err)
+      return ()
+
+loop
+  :: forall a es
+   . ( Render a :> es
+     , L.Log :> es
+     )
+  => Texture a
+  -> Eff es ()
+loop tex = do
+  -- TODO somehow free texture on close
+  -- TODO associate name with texture
+  -- TODO log texture and surface open/close
+  L.logTrace_ "Frame"
+  clear @a
+  drawTexture tex (Vec2 0 0)
+  present @a
+  waitFrame @a
+  loop tex
 
 -- -- | Encapsulate the application logic with window and renderer
 -- runApp :: SDLWindow -> SDLRenderer -> IO ()
@@ -217,3 +220,21 @@ app tex = do
 --   unless presentSuccess $ do
 --     err <- sdlGetError
 --     sdlLog $ "Warning: Failed to present renderer: " ++ err
+
+-- artwork fetchers ------------------------------------------------------------
+
+-- TODO use bilinearResample to scale bitmaps to the same size??
+
+-- -- | Get the album artwork of the song at the given uri as a SDL surface
+-- --
+-- -- Returns an error if failed to allocate the surface
+-- getArtworkSurface
+--   :: (MonadBackend e m, MonadIO m)
+--   => TrackID m
+--   -> m (Either String (Ptr SDLSurface))
+-- getArtworkSurface trackId = do
+--   bmp <- getArtwork trackId
+--   maybeSurf <- liftIO $ toSurface bmp
+--   return $ case maybeSurf of
+--     Nothing -> Left "could not load surface"
+--     Just surf -> return surf
