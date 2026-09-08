@@ -86,8 +86,7 @@ withSDLRenderer (Vec2 width height) title = reinterpret_ (runErrorNoCallStack . 
     -- Open the SDL window.
     openWindow = do
       L.logTrace_ "Initializing SDL window"
-      -- let flags = [SDL.SDL_WINDOW_TRANSPARENT, SDL.SDL_WINDOW_BORDERLESS]
-      let flags = []
+      let flags = [SDL.SDL_WINDOW_TRANSPARENT, SDL.SDL_WINDOW_BORDERLESS]
       liftIO (SDL.sdlCreateWindow title width height flags) >>= \case
         Just win -> return win
         Nothing -> throwError @T.Text "Failed to initialize window"
@@ -117,7 +116,7 @@ clear'
   => Eff es ()
 clear' = do
   ren <- asks scRenderer
-  _ <- liftIO $ SDL.sdlSetRenderDrawColor ren 32 32 64 255
+  _ <- liftIO $ SDL.sdlSetRenderDrawColor ren 0 0 0 0
   result <- liftIO $ SDL.sdlRenderClear ren
   unless result $ warn "SDL failed to clear"
 
