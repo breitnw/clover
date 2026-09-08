@@ -159,6 +159,7 @@ drawTexture'
   -> Vec2 Int
   -> Eff es ()
 drawTexture' (Texture tex) (Vec2 x y) = do
+  -- TODO this ignores x and y right now
   ren <- asks scRenderer
   result <- liftIO $ SDL.sdlRenderTexture ren tex Nothing Nothing
   unless result $ warn "SDL failed to render texture"
