@@ -20,7 +20,7 @@
         (pkgs.fetchFromGitHub {
           owner = "breitnw";
           repo = "sdl3-hs";
-          rev = "eacde89316d1112e4d737833d4dbf02142490ada";
+          rev = "missing-video-exports";
           sha256 = "sha256-Ig1Tx3ccc4NOa3hKkQ5lx/3hnvAM4o34cE95DYalmlk=";
         })
         { SDL3 = pkgs-unstable.sdl3.dev; };
@@ -29,33 +29,36 @@
         (pkgs.fetchFromGitHub {
           owner = "breitnw";
           repo = "libmpd-haskell";
-          rev = "9e2bcccf8a9c3b2bdcff9ae466e69715a5b05544";
-          sha256 = "sha256-TuaS5coVhsnCjlH1AGDHDA4JOBWa9DWDJA+/2d+3mBo=";
+          rev = "breitnw-dev";
+          sha256 = "sha256-NLo1G9jsm60TAQyb6S6/JnXP47LIZOo2JAG8qjdFZ1U=";
         })
         {};
+      libmpd-effectful = hp.callCabal2nix
+        "libmpd"
+        (pkgs.fetchFromGitHub {
+          owner = "breitnw";
+          repo = "libmpd-effectful";
+          rev = "breitnw-dev";
+          sha256 = "sha256-vKY43A2N0B8GL9nK0zzxeH9fX9LyKjU3LVVroLoqf4w=";
+        })
+        { inherit libmpd; };
     in {
       packages.default = hp.developPackage {
         root = ./.;
         withHoogle = true;
-        # I believe these are needed to make HLS happy, but not sure
-        # Both are needed for `nix run`
-        overrides = self: super: { inherit sdl3 libmpd; };
+        returnShellEnv = true;
+
+        # developPackage doesn't read cabal.project, so we need to manually pass
+        # the dependencies specified there
+        overrides = self: super: {
+          inherit sdl3 libmpd-effectful;
+        };
 
         modifier = drv: pkgs.haskell.lib.addBuildTools drv [
           hp.cabal-install
           hp.haskell-language-server
 
-          # TODO why doesn't withHoogle provide this??
-          (hp.hoogleWithPackages (p: [
-            sdl3
-            libmpd
-            p.stb-image
-            p.mtl
-            p.bytestring
-            p.containers
-          ]))
-
-          # not required to build (since we override sdl3), but needed for
+          # not required to `nix build` (since we override sdl3), but needed for
           # haskell-language-server (or cabal build) to work properly
           pkgs-unstable.sdl3
         ];

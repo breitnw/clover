@@ -26,7 +26,7 @@ newlines-between-decls: 1
 haddock-style: single-line
 
 # How to print module docstring
-haddock-style-module: null
+haddock-style-module: multi-line
 
 # Styling of let blocks (choices: auto, inline, newline, or mixed)
 let-style: inline

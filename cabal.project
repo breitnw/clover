@@ -1,13 +1,29 @@
+packages: .
+
+-- needed for sdl3
+flags: -pkgconfig
+
 source-repository-package
     type: git
     location: https://github.com/breitnw/sdl3-hs.git
-    tag: eacde89316d1112e4d737833d4dbf02142490ada
+    branch: missing-video-exports
 
+-- source-repository-package
+--     type: git
+--     location: file:///home/breitnw/Documents/code/forks/libmpd-haskell
+--     tag: 69a7bc37c17eb00c5df4b46f8b22103a01ca74f7
+       
 source-repository-package
     type: git
     location: https://github.com/breitnw/libmpd-haskell.git
-    tag: 9e2bcccf8a9c3b2bdcff9ae466e69715a5b05544
+    branch: breitnw-dev
 
-flags: -pkgconfig
+-- source-repository-package
+--     type: git
+--     location: https://github.com/breitnw/libmpd-effectful.git
+--     tag: 322beef1fa18db3f2864fc586fe2db00736dcf63
 
-packages: ./clover.cabal
+source-repository-package
+    type: git
+    location: file:///home/breitnw/Documents/code/clover-stuff/libmpd-effectful
+    branch: breitnw-dev

@@ -65,9 +65,15 @@ import Util
 ## Effects
 All effects and effect handlers are housed in the `src/Effectful` directory, as opposed to the `src/Clover` directory. This is in keeping with most other libraries that supply `effectful`-flavored effects, such as `log-effectful`. 
 
+### Naming effects
+The topmost module housing an effect should be named with a noun, since it houses the "thing that does the effect" (e.g., "ImageLoader", "MusicPlayer").
+
+Meanwhile, the effect should be named as an infinitive verb (e.g., "LoadImages", "PlayMusic").
+
+### Module structure
 The module structure differs depending on whether the effect is statically or dynamically dispatched. 
 
-### Dynamically-dispatched effects
+#### Dynamically-dispatched effects
 Dynamic effects should be defined in the following modules.
 
 - `Effectful.<effect>.Effect`: Exports the effect, as well as top level helper functions that execute effect operations using `send`. Required.
@@ -76,7 +82,7 @@ Dynamic effects should be defined in the following modules.
 - `Effectful.<effect>.<helper>`: Exports actions derived from the effect's primitive actions. Optional (zero or more).
 - `Effectful.<effect>`: Re-exports `Effect` module, `Types` module (if it exists), and all helper modules. Does not re-export any handler modules. Required.
 
-### Statically-dispatched effects
+#### Statically-dispatched effects
 Static effects should follow the same format as dynamically-dispatched ones, with some small changes: 
 
 - There are no `Handler` modules. Instead, handler logic goes directly in `Effectful.<effect>.Effect`.
