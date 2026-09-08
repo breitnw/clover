@@ -55,6 +55,7 @@ library
       bitmap           ^>=0.0.2,
       stb-image        ^>=0.2.1,
       effectful        ^>=2.6.1,
+      effectful-th     ^>=1.0.0.4,
       libmpd-effectful ^>=0.1,
       log-effectful    ^>=1.0.1
 

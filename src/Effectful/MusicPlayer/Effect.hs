@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 {- |
 Module      : Effectful.MusicPlayer.Effect
 Copyright   : (c) Nick Breitling 2026
@@ -15,7 +17,7 @@ module Effectful.MusicPlayer.Effect (
 
 import Codec.Image.STB qualified as STB
 import Effectful
-import Effectful.Dispatch.Dynamic
+import Effectful.TH
 
 import Effectful.MusicPlayer.Types
 
@@ -24,34 +26,22 @@ import Effectful.MusicPlayer.Types
 -- Implementors of this interface may be blocking. Scheduling should be handled
 -- by the user of the effect.
 data PlayMusic :: Effect where
+  -- | Get the currently playing song.
+  --
+  -- If there is no song currently playing, returns Nothing.
   CurrentSong :: PlayMusic m (Maybe Song)
+  -- | Based on a song ID, get information on that song.
+  --
+  -- Fails if the ID refers to an invalid song.
   GetSong :: SongID -> PlayMusic m Song
+  -- | Based on a song ID, get its artwork.
+  --
+  -- Fails if the ID refers to an invalid song.
   GetArtwork :: SongID -> PlayMusic m (Maybe STB.Image)
+  -- | Send a command to control the backend
   SendCommand :: Command -> PlayMusic m ()
 
-type instance DispatchOf PlayMusic = Dynamic
-
--- | Get the currently playing song.
---
--- If there is no song currently playing, returns Nothing.
-currentSong :: PlayMusic :> es => Eff es (Maybe Song)
-currentSong = send CurrentSong
-
--- | Based on a song ID, get information on that song.
---
--- Fails (via the MonadError instance) if the ID refers to an invalid song.
-getSong :: PlayMusic :> es => SongID -> Eff es Song
-getSong = send . GetSong
-
--- | Based on a song ID, get its artwork.
---
--- Fails (via the MonadError instance) if the ID refers to an invalid song.
-getArtwork :: PlayMusic :> es => SongID -> Eff es (Maybe STB.Image)
-getArtwork = send . GetArtwork
-
--- | Send a command to control the backend
-sendCommand :: PlayMusic :> es => Command -> Eff es ()
-sendCommand = send . SendCommand
+makeEffect ''PlayMusic
 
 {- NOTES
 
