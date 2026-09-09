@@ -14,6 +14,7 @@ module Effectful.Renderer.Effect (
   waitFrame,
   present,
   loadTexture,
+  destroyTexture,
   drawTexture,
 ) where
 
@@ -33,7 +34,9 @@ data Render a :: Effect where
   WaitFrame :: Render a m ()
   -- | Load a texture into memory and return a handle.
   LoadTexture :: STB.Image -> Render a m (Texture a)
+  -- | Destroy a texture given its handle. The handle will become invalid.
+  DestroyTexture :: Texture a -> Render a m ()
   -- | Draw a texture given a handle.
-  DrawTexture :: (Texture a) -> Vec2 Int -> Render a m ()
+  DrawTexture :: Texture a -> Vec2 Int -> Render a m ()
 
 makeEffect ''Render

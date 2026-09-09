@@ -60,6 +60,7 @@ withSDLRenderer (Vec2 width height) title = reinterpret_ (runErrorNoCallStack . 
   WaitFrame -> waitFrame'
   Present -> present'
   LoadTexture img -> loadTexture' img
+  DestroyTexture tex -> destroyTexture' tex
   DrawTexture tex pos -> drawTexture' tex pos
   where
     runSDL
@@ -147,6 +148,7 @@ loadTexture'
 loadTexture' im = do
   ren <- asks scRenderer
   bracket openSurface closeSurface $ \surf -> do
+    L.logTrace_ "Creating texture"
     liftIO (SDL.sdlCreateTextureFromSurface ren surf) >>= \case
       Nothing -> throwError @T.Text "Failed to create texture from surface"
       Just tex -> return $ Texture tex
@@ -164,6 +166,14 @@ loadTexture' im = do
       -- TODO add surface name for logging?
       L.logTrace_ "Destroying surface"
       liftIO $ SDL.sdlDestroySurface surf
+
+destroyTexture'
+  :: (Error T.Text :> es, L.Log :> es, IOE :> es)
+  => Texture SDL
+  -> Eff es ()
+destroyTexture' (Texture tex) = do
+  L.logTrace_ "Destroying texture"
+  liftIO $ SDL.sdlDestroyTexture tex
 
 drawTexture'
   :: (Reader SDLContext :> es, L.Log :> es, IOE :> es)
