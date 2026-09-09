@@ -64,9 +64,6 @@ loop
   => Texture a
   -> Eff es ()
 loop tex = do
-  -- TODO somehow free texture on close - might need higher order effect
-  -- TODO associate name with texture
-  -- TODO log texture and surface open/close
   L.logTrace_ "Frame"
   clear @a
   drawTexture tex (Vec2 0 0)
