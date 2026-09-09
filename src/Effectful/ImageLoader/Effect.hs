@@ -1,3 +1,9 @@
+-- TODO [PERFORMANCE] The STB.Image library (which ImageLoader wraps) uses
+-- String instead of Text, but I try to use Text whenever possible. So, there
+-- are some (maybe unnecessary) coercions here.
+-- Also, there is a bit of inconsistency: the FilePath taken as an argument to
+-- loadImagePath is a String, not a Text.
+
 {- |
 Module      : Effectful.ImageLoader.Effect
 Copyright   : (c) Nick Breitling 2026
@@ -36,8 +42,6 @@ data instance StaticRep LoadImages = Console
 runLoadImages
   :: (HasCallStack, IOE :> es) => Eff (LoadImages : es) a -> Eff es a
 runLoadImages = evalStaticRep Console
-
--- TODO use Text here instead of FilePath (which is a String)?
 
 -- | Load an 'Image' from a file path.
 loadImagePath
