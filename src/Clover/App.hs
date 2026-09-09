@@ -7,6 +7,7 @@ module Clover.App (main) where
 -- to see if we already have it cached
 
 import System.Exit (exitFailure, exitSuccess)
+import Text.Printf
 
 import Data.Text qualified as T
 import Effectful
@@ -21,7 +22,7 @@ import Effectful.Renderer.Handler.SDL
 
 printLogMessage :: L.LogMessage -> IO ()
 printLogMessage msg = do
-  print $ L.showLogMessage Nothing msg
+  printf "%s\n" $ L.showLogMessage Nothing msg
 
 -- | Initialize and run the application
 main :: IO ()
