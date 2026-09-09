@@ -13,14 +13,14 @@ module Effectful.MusicPlayer.Types (
   Command (..),
 ) where
 
-import Data.Text (Text)
+import Data.Text qualified as T
 
-newtype SongID = SongID Text deriving (Show)
+newtype SongID = SongID T.Text deriving (Show)
 
 data Song = Song
-  { title :: Maybe Text
-  , artist :: Maybe Text
-  , album :: Maybe Text
+  { title :: Maybe T.Text
+  , artist :: Maybe T.Text
+  , album :: Maybe T.Text
   , songID :: SongID
   }
   deriving (Show)

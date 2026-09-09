@@ -7,9 +7,9 @@ module Clover.App (main) where
 -- to see if we already have it cached
 
 import System.Exit (exitFailure, exitSuccess)
-import Text.Printf
 
 import Data.Text qualified as T
+import Data.Text.IO qualified as T
 import Effectful
 import Effectful.Concurrent
 
@@ -20,16 +20,17 @@ import Effectful.Renderer.Handler.SDL
 
 -- app logic -------------------------------------------------------------------
 
-printLogMessage :: L.LogMessage -> IO ()
-printLogMessage msg = do
-  printf "%s\n" $ L.showLogMessage Nothing msg
+mkStdoutLogger :: IO L.Logger
+mkStdoutLogger = do
+  L.mkLogger "stdout" $ \msg ->
+    T.putStrLn $ L.showLogMessage Nothing msg
 
 -- | Initialize and run the application
 main :: IO ()
 main = runEff . runConcurrent $ do
-  logger <- liftIO $ L.mkLogger "clover logger" printLogMessage
+  logger <- liftIO mkStdoutLogger
   L.runLog "clover" logger L.LogTrace $ do
-    let runSDL = withSDLRenderer (Vec2 261 261) "clover window"
+    let runSDL = withSDLRenderer (Vec2 100 100) "clover window"
     appResult <- (runSDL . runConcurrent . runLoadImages) (app @SDL)
     case appResult of
       Right _ -> liftIO exitSuccess
@@ -45,13 +46,14 @@ app
      )
   => Eff es ()
 app = do
-  loadImagePath "data/noa-small.png" >>= \case
+  let imPath = "data/noa-small.png"
+  loadImagePath imPath >>= \case
     Right im -> do
-      tex <- loadTexture @a im
-      L.logTrace_ "Entering loop"
-      loop tex
+      withTexture @a im $ \tex -> do
+        L.logTrace_ "Entering loop"
+        loop tex
     Left err -> do
-      L.logAttention_ (T.pack err)
+      L.logAttention_ err
       return ()
 
 loop
@@ -62,7 +64,7 @@ loop
   => Texture a
   -> Eff es ()
 loop tex = do
-  -- TODO somehow free texture on close
+  -- TODO somehow free texture on close - might need higher order effect
   -- TODO associate name with texture
   -- TODO log texture and surface open/close
   L.logTrace_ "Frame"
@@ -205,22 +207,6 @@ loop tex = do
 --             return False
 --       _ -> return False -- Other scancodes don't signal quit by default
 --   _ -> return False -- Other event types don't signal quit by default
-
--- -- | Render a single frame
--- renderFrame :: SDLRenderer -> IORef SDLFPoint -> SDLTexture -> IO ()
--- renderFrame renderer rectPosRef tex = do
---   -- 1. Set draw color to clear color (e.g., dark blue) and clear
---   _ <- sdlSetRenderDrawColor renderer 32 32 64 255
---   clearSuccess <- sdlRenderClear renderer
---   unless clearSuccess $ sdlLog "Warning: Failed to clear renderer"
-
---   _ <- sdlRenderTexture renderer tex Nothing Nothing
-
---   -- 6. Present the rendered frame
---   presentSuccess <- sdlRenderPresent renderer
---   unless presentSuccess $ do
---     err <- sdlGetError
---     sdlLog $ "Warning: Failed to present renderer: " ++ err
 
 -- artwork fetchers ------------------------------------------------------------
 

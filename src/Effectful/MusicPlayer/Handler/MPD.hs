@@ -14,7 +14,6 @@ module Effectful.MusicPlayer.Handler.MPD where
 import Data.Map ((!?))
 import Data.String (fromString)
 
-import Codec.Image.STB qualified as STB
 import Data.ByteString qualified as BS
 import Data.Text qualified as T
 import Effectful
@@ -74,7 +73,7 @@ getArtwork'
      , LoadImages :> es
      )
   => SongID
-  -> Eff es (Maybe STB.Image)
+  -> Eff es (Maybe Image)
 getArtwork' (SongID sid) =
   getArtworkFromCache
     `orElseDo` getArtworkFromFile
@@ -83,13 +82,13 @@ getArtwork' (SongID sid) =
     path = fromString $ T.unpack sid
 
     -- 1. check the cache to see if we already have the album art downloaded
-    getArtworkFromCache :: Eff es (Maybe STB.Image)
+    getArtworkFromCache :: Eff es (Maybe Image)
     getArtworkFromCache = do
       L.logTrace_ "Trying to fetch artwork from cache"
       return Nothing -- TODO
 
     -- 2. attempt to get album art file (albumArt)
-    getArtworkFromFile :: Eff es (Maybe STB.Image)
+    getArtworkFromFile :: Eff es (Maybe Image)
     getArtworkFromFile = do
       L.logTrace_ "Trying to fetch artwork from file"
       bytes <-
@@ -97,19 +96,19 @@ getArtwork' (SongID sid) =
           (\offset -> (Just <$> MPD.albumArt path offset) `catchError` handler)
       case bytes of
         Nothing -> return Nothing
-        Just b -> rightToMaybe <$> loadImageBytes b
+        Just b -> rightToMaybe <$> loadImageBytes (T.append "file@" sid) b
       where
         handler _ (MPD.ACK MPD.FileNotFound _) = return Nothing
         handler _ e = throwError e
 
     -- 3. attempt to get album art from the binary tag (readPicture)
-    getArtworkFromTag :: Eff es (Maybe STB.Image)
+    getArtworkFromTag :: Eff es (Maybe Image)
     getArtworkFromTag = do
       L.logTrace_ "Trying to fetch artwork from tag"
       bytes <- getArtworkBytes (MPD.readPicture path)
       case bytes of
         Nothing -> return Nothing
-        Just b -> rightToMaybe <$> loadImageBytes b
+        Just b -> rightToMaybe <$> loadImageBytes (T.append "tag@" sid) b
 
 sendCommand'
   :: (MPD.EMPD :> es, Error MPD.MPDError :> es)

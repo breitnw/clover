@@ -15,10 +15,10 @@ module Effectful.MusicPlayer.Effect (
   sendCommand,
 ) where
 
-import Codec.Image.STB qualified as STB
 import Effectful
 import Effectful.TH
 
+import Effectful.ImageLoader.Types
 import Effectful.MusicPlayer.Types
 
 -- | Interface implemented by the music player backend.
@@ -37,7 +37,7 @@ data PlayMusic :: Effect where
   -- | Based on a song ID, get its artwork.
   --
   -- Fails if the ID refers to an invalid song.
-  GetArtwork :: SongID -> PlayMusic m (Maybe STB.Image)
+  GetArtwork :: SongID -> PlayMusic m (Maybe Image)
   -- | Send a command to control the backend
   SendCommand :: Command -> PlayMusic m ()
 

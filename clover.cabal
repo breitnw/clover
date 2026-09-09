@@ -51,6 +51,7 @@ library
       text             ^>=2.1.4,
       bytestring       ^>=0.12.2,
       containers       ^>=0.8,
+      aeson            ^>=2.3.1,
       sdl3             ^>=0.1,
       bitmap           ^>=0.0.2,
       stb-image        ^>=0.2.1,
@@ -73,6 +74,8 @@ library
       Effectful.MusicPlayer.Handler.MPD,
 
       Effectful.ImageLoader,
+      Effectful.ImageLoader.Effect,
+      Effectful.ImageLoader.Types,
 
       Effectful.Renderer,
       Effectful.Renderer.Effect,

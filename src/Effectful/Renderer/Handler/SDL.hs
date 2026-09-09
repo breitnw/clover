@@ -1,3 +1,4 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 {- |
@@ -16,6 +17,7 @@ import Control.Monad (unless)
 import Foreign.Ptr (Ptr)
 
 import Codec.Image.STB qualified as STB
+import Data.Aeson as A
 import Data.Bitmap qualified as BMP
 import Data.Text qualified as T
 import Effectful
@@ -27,6 +29,7 @@ import Effectful.Log qualified as L
 import Effectful.Reader.Static
 import SDL3 qualified as SDL
 
+import Effectful.ImageLoader.Types
 import Effectful.Renderer.Effect
 import Effectful.Renderer.Types
 import Foreign (castPtr)
@@ -36,7 +39,8 @@ import Foreign (castPtr)
 -- | An empty type representing the SDL render backend.
 data SDL
 
-newtype instance Texture SDL = Texture SDL.SDLTexture
+-- | A SDL texture comes with a name and data
+data instance Texture SDL = Texture ImageMeta SDL.SDLTexture
 
 -- | The resources available when inside a SDL window context.
 data SDLContext = SDLContext
@@ -44,7 +48,6 @@ data SDLContext = SDLContext
   , scRenderer :: SDL.SDLRenderer
   }
 
--- TODO require Fail in es?
 withSDLRenderer
   :: forall es a
    . (IOE :> es, L.Log :> es, Concurrent :> es)
@@ -76,7 +79,6 @@ withSDLRenderer (Vec2 width height) title = reinterpret_ (runErrorNoCallStack . 
     openSDL = do
       L.logTrace_ "Acquiring SDL context"
       initSuccess <- liftIO $ SDL.sdlInit [SDL.SDL_INIT_VIDEO, SDL.SDL_INIT_EVENTS]
-      -- TODO does throwError still trigger the final computation of bracket?
       unless initSuccess $ throwError @T.Text "Failed to initialize SDL"
 
     -- Close the SDL context.
@@ -119,7 +121,7 @@ clear' = do
   ren <- asks scRenderer
   _ <- liftIO $ SDL.sdlSetRenderDrawColor ren 0 0 0 0
   result <- liftIO $ SDL.sdlRenderClear ren
-  unless result $ warn "SDL failed to clear"
+  unless result $ warn_ "SDL failed to clear"
 
 -- TODO check out different options for concurrency, there might be a better way
 -- to utilize Concurrent effect here
@@ -135,7 +137,7 @@ present'
 present' = do
   ren <- asks scRenderer
   result <- liftIO $ SDL.sdlRenderPresent ren
-  unless result $ warn "SDL failed to present frame"
+  unless result $ warn_ "SDL failed to present frame"
 
 loadTexture'
   :: ( Reader SDLContext :> es
@@ -143,36 +145,34 @@ loadTexture'
      , Error T.Text :> es
      , IOE :> es
      )
-  => STB.Image
+  => Image
   -> Eff es (Texture SDL)
-loadTexture' im = do
+loadTexture' (Image meta im) = do
   ren <- asks scRenderer
   bracket openSurface closeSurface $ \surf -> do
-    L.logTrace_ "Creating texture"
+    L.logTrace "Creating texture" meta
     liftIO (SDL.sdlCreateTextureFromSurface ren surf) >>= \case
       Nothing -> throwError @T.Text "Failed to create texture from surface"
-      Just tex -> return $ Texture tex
+      Just tex -> return $ Texture meta tex
   where
     -- Create a surface from 'im'.
     openSurface = do
-      -- TODO add surface name for logging?
-      L.logTrace_ "Creating surface"
+      L.logTrace "Creating surface" meta
       liftIO (createSurfaceFromImage im) >>= \case
         Nothing -> throwError @T.Text "Failed to create surface from image"
         Just surf -> return surf
 
     -- Destroy the provided surface.
     closeSurface surf = do
-      -- TODO add surface name for logging?
-      L.logTrace_ "Destroying surface"
+      L.logTrace "Destroying surface" meta
       liftIO $ SDL.sdlDestroySurface surf
 
 destroyTexture'
   :: (Error T.Text :> es, L.Log :> es, IOE :> es)
   => Texture SDL
   -> Eff es ()
-destroyTexture' (Texture tex) = do
-  L.logTrace_ "Destroying texture"
+destroyTexture' (Texture meta tex) = do
+  L.logTrace "Destroying texture" meta
   liftIO $ SDL.sdlDestroyTexture tex
 
 drawTexture'
@@ -180,17 +180,21 @@ drawTexture'
   => Texture SDL
   -> Vec2 Int
   -> Eff es ()
-drawTexture' (Texture tex) (Vec2 x y) = do
+drawTexture' (Texture meta tex) (Vec2 x y) = do
   -- TODO this ignores x and y right now
   ren <- asks scRenderer
   result <- liftIO $ SDL.sdlRenderTexture ren tex Nothing Nothing
-  unless result $ warn "SDL failed to render texture"
+  unless result $ warn "SDL failed to render texture" meta
 
 -- HELPERS ---------------------------------------------------------------------
 
 -- | Log a message as a warning
-warn :: L.Log :> es => T.Text -> Eff es ()
-warn msg = L.logAttention_ (T.append "[WARNING] " msg)
+warn :: (L.Log :> es, A.ToJSON a) => T.Text -> a -> Eff es ()
+warn msg = L.logAttention (T.append "[WARNING] " msg)
+
+-- | Log a message as a warning
+warn_ :: L.Log :> es => T.Text -> Eff es ()
+warn_ msg = L.logAttention_ (T.append "[WARNING] " msg)
 
 -- | Convert an STB image to an SDL surface
 --
