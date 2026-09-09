@@ -8,7 +8,6 @@ module Clover.App (main) where
 
 import System.Exit (exitFailure, exitSuccess)
 
-import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Effectful
 import Effectful.Concurrent
@@ -17,6 +16,7 @@ import Effectful.ImageLoader
 import Effectful.Log qualified as L
 import Effectful.Renderer
 import Effectful.Renderer.Handler.SDL
+import Util
 
 -- app logic -------------------------------------------------------------------
 
@@ -35,7 +35,7 @@ main = runEff . runConcurrent $ do
     case appResult of
       Right _ -> liftIO exitSuccess
       Left msg -> do
-        L.logAttention_ $ T.append "[ERROR] " msg
+        logErr_ msg
         liftIO exitFailure
 
 app

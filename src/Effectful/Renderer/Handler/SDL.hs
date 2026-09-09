@@ -1,4 +1,3 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 {- |
@@ -14,10 +13,10 @@ module Effectful.Renderer.Handler.SDL (
 ) where
 
 import Control.Monad (unless)
+import Foreign (castPtr)
 import Foreign.Ptr (Ptr)
 
 import Codec.Image.STB qualified as STB
-import Data.Aeson as A
 import Data.Bitmap qualified as BMP
 import Data.Text qualified as T
 import Effectful
@@ -32,7 +31,7 @@ import SDL3 qualified as SDL
 import Effectful.ImageLoader.Types
 import Effectful.Renderer.Effect
 import Effectful.Renderer.Types
-import Foreign (castPtr)
+import Util
 
 -- EFFECT HANDLER --------------------------------------------------------------
 
@@ -121,7 +120,7 @@ clear' = do
   ren <- asks scRenderer
   _ <- liftIO $ SDL.sdlSetRenderDrawColor ren 0 0 0 0
   result <- liftIO $ SDL.sdlRenderClear ren
-  unless result $ warn_ "SDL failed to clear"
+  unless result $ logWarn_ "SDL failed to clear"
 
 -- TODO check out different options for concurrency, there might be a better way
 -- to utilize Concurrent effect here
@@ -137,7 +136,7 @@ present'
 present' = do
   ren <- asks scRenderer
   result <- liftIO $ SDL.sdlRenderPresent ren
-  unless result $ warn_ "SDL failed to present frame"
+  unless result $ logWarn_ "SDL failed to present frame"
 
 loadTexture'
   :: ( Reader SDLContext :> es
@@ -153,7 +152,8 @@ loadTexture' (Image meta im) = do
     L.logTrace "Creating texture" meta
     liftIO (SDL.sdlCreateTextureFromSurface ren surf) >>= \case
       Nothing -> throwError @T.Text "Failed to create texture from surface"
-      Just tex -> return $ Texture meta tex
+      Just tex -> do
+        return $ Texture meta tex
   where
     -- Create a surface from 'im'.
     openSurface = do
@@ -184,17 +184,9 @@ drawTexture' (Texture meta tex) (Vec2 x y) = do
   -- TODO this ignores x and y right now
   ren <- asks scRenderer
   result <- liftIO $ SDL.sdlRenderTexture ren tex Nothing Nothing
-  unless result $ warn "SDL failed to render texture" meta
+  unless result $ logWarn "SDL failed to render texture" meta
 
 -- HELPERS ---------------------------------------------------------------------
-
--- | Log a message as a warning
-warn :: (L.Log :> es, A.ToJSON a) => T.Text -> a -> Eff es ()
-warn msg = L.logAttention (T.append "[WARNING] " msg)
-
--- | Log a message as a warning
-warn_ :: L.Log :> es => T.Text -> Eff es ()
-warn_ msg = L.logAttention_ (T.append "[WARNING] " msg)
 
 -- | Convert an STB image to an SDL surface
 --
