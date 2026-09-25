@@ -1,4 +1,4 @@
-# clover
+# CLoVer
 
 A massively customizable graphical MPD client for music collectors and visualization lovers
 
