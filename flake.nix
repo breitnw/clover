@@ -1,19 +1,16 @@
 {
   description = "Haskell development flake for clover";
 
-  inputs.nixpkgs.url = "nixpkgs/nixos-25.11";
-  inputs.nixpkgs-unstable.url = "nixpkgs/nixos-unstable";
+  inputs.nixpkgs.url = "nixpkgs/nixos-26.05";
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
   outputs = {
     nixpkgs,
-    nixpkgs-unstable,
     flake-utils,
     ...
   }:
     flake-utils.lib.eachDefaultSystem (system: let
       pkgs = nixpkgs.legacyPackages.${system};
-      pkgs-unstable = nixpkgs-unstable.legacyPackages.${system};
       hp = pkgs.haskell.packages.ghc96;
       sdl3 = hp.callCabal2nix
         "sdl3"
@@ -23,7 +20,7 @@
           rev = "missing-video-exports";
           sha256 = "sha256-Ig1Tx3ccc4NOa3hKkQ5lx/3hnvAM4o34cE95DYalmlk=";
         })
-        { SDL3 = pkgs-unstable.sdl3.dev; };
+        { SDL3 = pkgs.sdl3.dev; };
       libmpd = hp.callCabal2nix
         "libmpd"
         (pkgs.fetchFromGitHub {
@@ -60,7 +57,7 @@
 
           # not required to `nix build` (since we override sdl3), but needed for
           # haskell-language-server (or cabal build) to work properly
-          pkgs-unstable.sdl3
+          pkgs.sdl3
         ];
       };
     });
