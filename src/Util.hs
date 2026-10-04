@@ -10,18 +10,29 @@ Stability   : unstable
 Utilities for common patterns.
 -}
 module Util (
+  Result,
+  unwrap,
   orElseDo,
   rightToMaybe,
-  logWarn,
-  logWarn_,
-  logErr,
-  logErr_,
 ) where
 
-import Data.Aeson qualified as A
+import System.Exit (exitFailure)
+
 import Data.Text qualified as T
 import Effectful
-import Effectful.Log qualified as L
+import Effectful.Fail
+
+import Effectful.Logger
+
+-- | Helper type similar to Anyhow's Result
+type Result = Either T.Text
+
+-- | Unwrap a 'Result', printing a message and exiting immediately if it is a
+-- failure value
+unwrap :: (Fail :> es, Log :> es) => Result a -> Eff es a
+unwrap v = case v of
+  Right success -> return success
+  Left msg -> logError msg >> liftIO exitFailure
 
 -- | Run the first computation. If it fails, return the result of the second computation.
 orElseDo :: Monad m => m (Maybe a) -> m (Maybe a) -> m (Maybe a)
@@ -39,19 +50,3 @@ warnPrefix = "[WARNING] "
 
 errPrefix :: T.Text
 errPrefix = "[ERROR] "
-
--- | Log a message as a warning with some data
-logWarn :: (L.Log :> es, A.ToJSON a) => T.Text -> a -> Eff es ()
-logWarn msg = L.logAttention (T.append warnPrefix msg)
-
--- | Log a message as a warning
-logWarn_ :: L.Log :> es => T.Text -> Eff es ()
-logWarn_ msg = L.logAttention_ (T.append warnPrefix msg)
-
--- | Log a message as an error with some data
-logErr :: (L.Log :> es, A.ToJSON a) => T.Text -> a -> Eff es ()
-logErr msg = L.logAttention (T.append errPrefix msg)
-
--- | Log a message as an error
-logErr_ :: L.Log :> es => T.Text -> Eff es ()
-logErr_ msg = L.logAttention_ (T.append errPrefix msg)

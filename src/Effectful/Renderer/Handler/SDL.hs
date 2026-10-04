@@ -9,7 +9,7 @@ Stability   : unstable
 -}
 module Effectful.Renderer.Handler.SDL (
   SDL,
-  withSDLRenderer,
+  runSDLRenderer,
 ) where
 
 import Control.Monad (unless)
@@ -24,11 +24,11 @@ import Effectful.Concurrent
 import Effectful.Dispatch.Dynamic
 import Effectful.Error.Static
 import Effectful.Exception
-import Effectful.Log qualified as L
 import Effectful.Reader.Static
 import SDL3 qualified as SDL
 
 import Effectful.ImageLoader.Types
+import Effectful.Logger
 import Effectful.Renderer.Effect
 import Effectful.Renderer.Types
 import Util
@@ -47,17 +47,17 @@ data SDLContext = SDLContext
   , scRenderer :: SDL.SDLRenderer
   }
 
-withSDLRenderer
+runSDLRenderer
   :: forall es a
-   . (IOE :> es, L.Log :> es, Concurrent :> es)
+   . (IOE :> es, Log :> es, Concurrent :> es)
   => Vec2 Int
   -- ^ The size of the window to create.
   -> String
   -- ^ The name of the window.
   -> Eff (Render SDL : es) a
   -- ^ The effect to run.
-  -> Eff es (Either T.Text a)
-withSDLRenderer (Vec2 width height) title = reinterpret_ (runErrorNoCallStack . runSDL) $ \case
+  -> Eff es (Result a)
+runSDLRenderer (Vec2 width height) title = reinterpret_ (runErrorNoCallStack . runSDL) $ \case
   Clear -> clear'
   WaitFrame -> waitFrame'
   Present -> present'
@@ -76,7 +76,7 @@ withSDLRenderer (Vec2 width height) title = reinterpret_ (runErrorNoCallStack . 
 
     -- Open the SDL context.
     openSDL = do
-      L.logTrace_ "Acquiring SDL context"
+      logTrace_ "Acquiring SDL context"
       initSuccess <- liftIO $ SDL.sdlInit [SDL.SDL_INIT_VIDEO, SDL.SDL_INIT_EVENTS]
       unless initSuccess $ throwError @T.Text "Failed to initialize SDL"
 

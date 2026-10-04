@@ -19,10 +19,10 @@ import Data.Text qualified as T
 import Effectful
 import Effectful.Dispatch.Dynamic
 import Effectful.Error.Dynamic
-import Effectful.Log qualified as L
 import Effectful.Network.MPD qualified as MPD
 
 import Effectful.ImageLoader
+import Effectful.Logger
 import Effectful.MusicPlayer.Effect
 import Effectful.MusicPlayer.Types
 import Util
@@ -32,14 +32,14 @@ import Util
 -- NOTE takes away the ability to catch errors... so all error handling can be
 -- dealt with outside the handler, I think?
 
-withMPDPlayer
-  :: (IOE :> es, L.Log :> es, LoadImages :> es)
+runMPDMusicPlayer
+  :: (IOE :> es, Log :> es, LoadImages :> es)
   => MPD.Host
   -> MPD.Port
   -> MPD.Password
   -> Eff (PlayMusic : es) a
   -> Eff es (Either MPD.MPDError a)
-withMPDPlayer host port pw = reinterpret_ runMPD $ \case
+runMPDMusicPlayer host port pw = reinterpret_ runMPD $ \case
   CurrentSong -> fmap asCloverSong <$> MPD.currentSong
   GetSong songId -> getSong' songId
   GetArtwork songId -> getArtwork' songId
@@ -69,7 +69,7 @@ getArtwork'
   :: forall es
    . ( MPD.EMPD :> es
      , Error MPD.MPDError :> es
-     , L.Log :> es
+     , Log :> es
      , LoadImages :> es
      )
   => SongID
@@ -84,19 +84,19 @@ getArtwork' (SongID sid) =
     -- 1. check the cache to see if we already have the album art downloaded
     getArtworkFromCache :: Eff es (Maybe Image)
     getArtworkFromCache = do
-      L.logTrace_ "Trying to fetch artwork from cache"
+      logInfo "Trying to fetch artwork from cache"
       return Nothing -- TODO
 
     -- 2. attempt to get album art file (albumArt)
     getArtworkFromFile :: Eff es (Maybe Image)
     getArtworkFromFile = do
-      L.logTrace_ "Trying to fetch artwork from file"
+      logInfo "Trying to fetch artwork from file"
       bytes <-
         getArtworkBytes
           (\offset -> (Just <$> MPD.albumArt path offset) `catchError` handler)
       case bytes of
         Nothing -> return Nothing
-        Just b -> rightToMaybe <$> loadImageBytes (T.append "file@" sid) b
+        Just b -> rightToMaybe <$> loadImageBytes ("file@" <> sid) b
       where
         handler _ (MPD.ACK MPD.FileNotFound _) = return Nothing
         handler _ e = throwError e
@@ -104,11 +104,11 @@ getArtwork' (SongID sid) =
     -- 3. attempt to get album art from the binary tag (readPicture)
     getArtworkFromTag :: Eff es (Maybe Image)
     getArtworkFromTag = do
-      L.logTrace_ "Trying to fetch artwork from tag"
+      logInfo "Trying to fetch artwork from tag"
       bytes <- getArtworkBytes (MPD.readPicture path)
       case bytes of
         Nothing -> return Nothing
-        Just b -> rightToMaybe <$> loadImageBytes (T.append "tag@" sid) b
+        Just b -> rightToMaybe <$> loadImageBytes ("tag@" <> sid) b
 
 sendCommand'
   :: (MPD.EMPD :> es, Error MPD.MPDError :> es)
@@ -147,7 +147,7 @@ asCloverSong s =
 -- retrieve the entire artwork
 getArtworkBytes
   :: forall es
-   . (MPD.EMPD :> es, Error MPD.MPDError :> es, L.Log :> es)
+   . (MPD.EMPD :> es, Error MPD.MPDError :> es, Log :> es)
   => (Integer -> Eff es (Maybe MPD.AlbumArtChunk))
   -- ^ Command to get a chunk of the album art (either readPicture or albumArt)
   -> Eff es (Maybe BS.ByteString)
@@ -166,7 +166,7 @@ getArtworkBytes getAlbumArtChunk = go BS.empty
           let chunkSize = BS.length bytes
           -- report progress
           let progress = div (100 * (offset + chunkSize)) fileSize
-          L.logTrace "progress" progress -- TODO use SDLlog instead of effect to enable output on windows builds
+          logInfo $ T.append "progress: " (T.pack $ show progress) -- TODO might be wise to remove this, since there's a lot of coercions
           -- append to the string and repeat
           let acc' = acc <> bytes
           if offset + chunkSize >= fileSize

@@ -31,6 +31,7 @@ import Effectful
 import Effectful.Dispatch.Static
 
 import Effectful.ImageLoader.Types
+import Util
 
 -- Reference: Effectful.Console.Effect
 data LoadImages :: Effect
@@ -47,7 +48,7 @@ runLoadImages = evalStaticRep Console
 loadImagePath
   :: LoadImages :> es
   => FilePath
-  -> Eff es (Either T.Text Image)
+  -> Eff es (Result Image)
 loadImagePath path = do
   unsafeEff_ $
     STB.loadImage path >>= \case
@@ -61,7 +62,7 @@ loadImageBytes
   -- ^ The name to assign the image
   -> ByteString
   -- ^ The image data
-  -> Eff es (Either T.Text Image)
+  -> Eff es (Result Image)
 loadImageBytes name bytes = do
   unsafeEff_ $
     STB.decodeImage bytes >>= \case

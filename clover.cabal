@@ -41,7 +41,7 @@ common language
 
 library
     import:           warnings, language
-    exposed:          False
+    exposed:          True
     default-language: Haskell2010
     hs-source-dirs:   src
 
@@ -51,43 +51,65 @@ library
       text             ^>=2.1.4,
       bytestring       ^>=0.12.2,
       containers       ^>=0.8,
-      aeson            ^>=2.3.1,
       sdl3             ^>=0.1,
       bitmap           ^>=0.0.2,
       stb-image        ^>=0.2.1,
       effectful        ^>=2.6.1,
       effectful-th     ^>=1.0.0.4,
-      libmpd-effectful ^>=0.1,
-      log-effectful    ^>=1.0.1
+      libmpd-effectful ^>=0.1
 
     exposed-modules: 
-      Clover.App
+      Clover.App,
+
+      -- Effects
+      Effectful.MusicPlayer,
+      Effectful.MusicPlayer.Handler.MPD,
+      Effectful.ImageLoader,
+      Effectful.Logger,
+      Effectful.Logger.Handler.SDL,
+      Effectful.Renderer,
+      Effectful.Renderer.Handler.SDL,
+      Effectful.Fail.Handler.Log,
 
     other-modules:
+      -- Clover
+      Clover.Music.Thread,
+      Clover.Graphics.Thread,
+      Clover.Graphics.Theme,
+      Clover.Graphics.Types,
+      Clover.Shared,
+
       -- Utils
       Util,
       
       -- Effects
-      Effectful.MusicPlayer,
       Effectful.MusicPlayer.Effect,
       Effectful.MusicPlayer.Types,
-      Effectful.MusicPlayer.Handler.MPD,
 
-      Effectful.ImageLoader,
       Effectful.ImageLoader.Effect,
       Effectful.ImageLoader.Types,
 
-      Effectful.Renderer,
+      Effectful.Logger.Effect,
+
       Effectful.Renderer.Effect,
       Effectful.Renderer.Types,
       Effectful.Renderer.Managed,
-      Effectful.Renderer.Handler.SDL
 
 executable clover
     import:           warnings, language
     default-language: Haskell2010
     main-is:          Main.hs
     hs-source-dirs:   run
+
+    build-depends:
+      base >=4.16 && <5,
+      clover
+
+executable logger
+    import:           warnings, language
+    default-language: Haskell2010
+    main-is:          Logger.hs
+    hs-source-dirs:   examples
 
     build-depends:
       base >=4.16 && <5,
