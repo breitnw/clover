@@ -34,7 +34,9 @@ Imports should be divided into three sections, in the below order, each separate
 
 1. Imports from `base`. All imported identifiers should be listed explicitly.
 2. Imports from Hackage libraries (and libraries from other remote repositories). It is not necessary to list imported identifiers. All libraries except for `effectful` must be imported with a qualification.
-2. Imports from other modules in this project. These do not need a qualification.
+3. Imports from local library modules (modules outside of the Clover directory). These do not need a qualification.
+4. Imports from local application modules (modules inside the Clover directory). These do not need a qualification, but may optionally have one.
+
 
 For example:
 
@@ -55,12 +57,16 @@ import Effectful.Network.MPD qualified as MPD
 import Effectful.Backend.Data
 import Effectful.Backend.Effect
 import Util
+
+import Clover.UI.Config.Loader qualified as UI
+import Clover.Shared
 ```
 
 > _Rationale..._
 > - Identifiers from `base` are listed explicitly because these modules often export a lot of identifiers, many of which go unused and clutter up the namespace.
 > - Libraries are qualified for ease of seeing what comes from where. `effectful` is not qualified simply because it is so ubiquitous throughout the code.
-> - Local modules are unqualified with implicit imports because the project is quite small, so it's easy enough to tell what's internal already :-)
+> - Local library modules are unqualified with implicit imports because the project is quite small, so it's easy enough to tell what's internal already :-)
+> - Local application modules are the most lax because they're only imported by other application modules. I care less about maintaining a strict style in application modules since their structure is basically impossible to systematize anyway.
 
 ## Effects
 All effects and effect handlers are housed in the `src/Effectful` directory, as opposed to the `src/Clover` directory. This is in keeping with most other libraries that supply `effectful`-flavored effects, such as `log-effectful`. 

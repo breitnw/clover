@@ -11,7 +11,7 @@ Clover is a tool for making your own music players and visualizers. It's heavily
 3. Renderer and graphical editor
 4. Shader editor with inputs that can respond to sound
 5. Export to/import from configuration
-6. Examples: vectorheart, 3d plastic/metallic, hatsune miku, clover (gadget with stickers?), minimalist black rectangles, rek421, billboards, flower blooms, sewn, fish, etc
+6. Examples: vectorheart, 3d plastic/metallic, hatsune miku, clover (gadget with stickers?), minimalist black rectangles, rek421, billboards, flower blooms, sewn, fish, fine art (frame), etc
 
 ### Some planned widgets
 - Album art display (can layer FX)
@@ -24,4 +24,4 @@ Clover is a tool for making your own music players and visualizers. It's heavily
 - Music video player, replaces album art if available, automatically fetched from YT (can layer FX)
 
 ### Other stretch-goal features
-- Alternative backends (e.g., subsonic, streaming services, proprietary)
+- [ ] Alternative backends (e.g., MPRIS2, subsonic, streaming services, proprietary)
