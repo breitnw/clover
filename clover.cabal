@@ -39,11 +39,21 @@ common language
         ConstraintKinds
         ScopedTypeVariables
 
+flag examples
+  description: Build example executables
+  default: False
+  manual: True
+
+-- library ---------------------------------------------------------------------
+
+-- The clover library mostly contains effects and their implementations.
+-- It is housed in the lib/ directory.
+
 library
     import:           warnings, language
     exposed:          True
     default-language: Haskell2010
-    hs-source-dirs:   src
+    hs-source-dirs:   lib
 
     build-depends: 
       base              >=4.16 && <5,
@@ -59,29 +69,24 @@ library
       libmpd-effectful ^>=0.1
 
     exposed-modules: 
-      Clover.App,
+      -- Utils
+      Util,
 
       -- Effects
       Effectful.MusicPlayer,
       Effectful.MusicPlayer.Handler.MPD,
+
       Effectful.ImageLoader,
+
       Effectful.Logger,
       Effectful.Logger.Handler.SDL,
+
       Effectful.Renderer,
       Effectful.Renderer.Handler.SDL,
+
       Effectful.Fail.Handler.Log,
 
-    other-modules:
-      -- Clover
-      Clover.Music.Thread,
-      Clover.Graphics.Thread,
-      Clover.Graphics.Theme,
-      Clover.Graphics.Types,
-      Clover.Shared,
-
-      -- Utils
-      Util,
-      
+    other-modules:    
       -- Effects
       Effectful.MusicPlayer.Effect,
       Effectful.MusicPlayer.Types,
@@ -95,21 +100,50 @@ library
       Effectful.Renderer.Types,
       Effectful.Renderer.Managed,
 
+-- main executable -------------------------------------------------------------
+
+-- Source files for the main clover executable are housed in the src/ directory.
+
 executable clover
     import:           warnings, language
     default-language: Haskell2010
     main-is:          Main.hs
-    hs-source-dirs:   run
+    hs-source-dirs:   src
 
     build-depends:
       base >=4.16 && <5,
       clover
+
+    other-modules:
+      Clover.App,
+      Clover.Config,
+      -- TODO rename vv
+      Clover.Shared,
+
+      Clover.Graphics.Theme,
+      Clover.Graphics.Thread,
+      Clover.Graphics.Types,
+
+      Clover.Music.Thread,
+
+-- examples --------------------------------------------------------------------
+
+-- Examples are housed in the examples/ directory. They can be built with the
+-- examples flag: 'cabal build --flag examples'
+
+-- One example is (ideally) provided for each effect in lib/ to demonstrate its
+-- behavior and usage. 
 
 executable logger
     import:           warnings, language
     default-language: Haskell2010
     main-is:          Logger.hs
     hs-source-dirs:   examples
+
+    if flag(examples)
+      buildable: True
+    else
+      buildable: False
 
     build-depends:
       base >=4.16 && <5,

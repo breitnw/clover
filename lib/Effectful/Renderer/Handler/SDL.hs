@@ -48,6 +48,9 @@ data SDLContext = SDLContext
   }
 
 runSDLRenderer
+  -- TODO if SDL gets separated out as its own effect, then it might be nice to
+  -- put fail in the list of effects here
+  -- But how will we log if SDL init fails?
   :: forall es a
    . (IOE :> es, Log :> es, Concurrent :> es)
   => Vec2 Int
@@ -76,18 +79,18 @@ runSDLRenderer (Vec2 width height) title = reinterpret_ (runErrorNoCallStack . r
 
     -- Open the SDL context.
     openSDL = do
-      logTrace_ "Acquiring SDL context"
+      logInfo "Acquiring SDL context"
       initSuccess <- liftIO $ SDL.sdlInit [SDL.SDL_INIT_VIDEO, SDL.SDL_INIT_EVENTS]
       unless initSuccess $ throwError @T.Text "Failed to initialize SDL"
 
     -- Close the SDL context.
     closeSDL = do
-      L.logTrace_ "Closing SDL context"
+      logInfo "Closing SDL context"
       liftIO SDL.sdlQuit
 
     -- Open the SDL window.
     openWindow = do
-      L.logTrace_ "Initializing SDL window"
+      logInfo "Initializing SDL window"
       let flags = [SDL.SDL_WINDOW_TRANSPARENT, SDL.SDL_WINDOW_BORDERLESS]
       liftIO (SDL.sdlCreateWindow title width height flags) >>= \case
         Just win -> return win
@@ -95,24 +98,24 @@ runSDLRenderer (Vec2 width height) title = reinterpret_ (runErrorNoCallStack . r
 
     -- Close the SDL window.
     closeWindow win = do
-      L.logTrace_ "Closing SDL window"
+      logInfo "Closing SDL window"
       liftIO $ SDL.sdlDestroyWindow win
 
     -- Open the SDL renderer.
     openRenderer win = do
-      L.logTrace_ "Initializing SDL renderer"
+      logInfo "Initializing SDL renderer"
       liftIO (SDL.sdlCreateRenderer win Nothing) >>= \case
         Just ren -> return ren
         Nothing -> throwError @T.Text "Failed to initialize renderer"
 
     -- Close the SDL renderer.
     closeRenderer ren = do
-      L.logTrace_ "Closing SDL renderer"
+      logInfo "Closing SDL renderer"
       liftIO $ SDL.sdlDestroyRenderer ren
 
 clear'
   :: ( Reader SDLContext :> es
-     , L.Log :> es
+     , Log :> es
      , IOE :> es
      )
   => Eff es ()
@@ -120,7 +123,7 @@ clear' = do
   ren <- asks scRenderer
   _ <- liftIO $ SDL.sdlSetRenderDrawColor ren 0 0 0 0
   result <- liftIO $ SDL.sdlRenderClear ren
-  unless result $ logWarn_ "SDL failed to clear"
+  unless result $ logWarn "SDL failed to clear"
 
 -- TODO check out different options for concurrency, there might be a better way
 -- to utilize Concurrent effect here
@@ -129,18 +132,18 @@ waitFrame' = threadDelay 1000000
 
 present'
   :: ( Reader SDLContext :> es
-     , L.Log :> es
+     , Log :> es
      , IOE :> es
      )
   => Eff es ()
 present' = do
   ren <- asks scRenderer
   result <- liftIO $ SDL.sdlRenderPresent ren
-  unless result $ logWarn_ "SDL failed to present frame"
+  unless result $ logWarn "SDL failed to present frame"
 
 loadTexture'
   :: ( Reader SDLContext :> es
-     , L.Log :> es
+     , Log :> es
      , Error T.Text :> es
      , IOE :> es
      )
@@ -149,7 +152,7 @@ loadTexture'
 loadTexture' (Image meta im) = do
   ren <- asks scRenderer
   bracket openSurface closeSurface $ \surf -> do
-    L.logTrace "Creating texture" meta
+    logInfo $ "Creating texture: " <> imMetaName meta
     liftIO (SDL.sdlCreateTextureFromSurface ren surf) >>= \case
       Nothing -> throwError @T.Text "Failed to create texture from surface"
       Just tex -> do
@@ -157,26 +160,26 @@ loadTexture' (Image meta im) = do
   where
     -- Create a surface from 'im'.
     openSurface = do
-      L.logTrace "Creating surface" meta
+      logInfo $ "Creating surface: " <> imMetaName meta
       liftIO (createSurfaceFromImage im) >>= \case
         Nothing -> throwError @T.Text "Failed to create surface from image"
         Just surf -> return surf
 
     -- Destroy the provided surface.
     closeSurface surf = do
-      L.logTrace "Destroying surface" meta
+      logInfo $ "Destroying surface: " <> imMetaName meta
       liftIO $ SDL.sdlDestroySurface surf
 
 destroyTexture'
-  :: (Error T.Text :> es, L.Log :> es, IOE :> es)
+  :: (Error T.Text :> es, Log :> es, IOE :> es)
   => Texture SDL
   -> Eff es ()
 destroyTexture' (Texture meta tex) = do
-  L.logTrace "Destroying texture" meta
+  logInfo $ "Destroying texture: " <> imMetaName meta
   liftIO $ SDL.sdlDestroyTexture tex
 
 drawTexture'
-  :: (Reader SDLContext :> es, L.Log :> es, IOE :> es)
+  :: (Reader SDLContext :> es, Log :> es, IOE :> es)
   => Texture SDL
   -> Vec2 Int
   -> Eff es ()
@@ -184,7 +187,9 @@ drawTexture' (Texture meta tex) (Vec2 x y) = do
   -- TODO this ignores x and y right now
   ren <- asks scRenderer
   result <- liftIO $ SDL.sdlRenderTexture ren tex Nothing Nothing
-  unless result $ logWarn "SDL failed to render texture" meta
+  unless result $
+    logWarn $
+      "SDL failed to render texture" <> imMetaName meta
 
 -- HELPERS ---------------------------------------------------------------------
 
