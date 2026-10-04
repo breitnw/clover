@@ -22,16 +22,14 @@ import Data.Text qualified as T
 import Effectful
 import Effectful.Concurrent
 import Effectful.Dispatch.Dynamic
-import Effectful.Error.Static
-import Effectful.Exception
 import Effectful.Reader.Static
 import SDL3 qualified as SDL
 
+import Effectful.Exception
 import Effectful.ImageLoader.Types
 import Effectful.Logger
 import Effectful.Renderer.Effect
 import Effectful.Renderer.Types
-import Util
 
 -- EFFECT HANDLER --------------------------------------------------------------
 
@@ -47,6 +45,11 @@ data SDLContext = SDLContext
   , scRenderer :: SDL.SDLRenderer
   }
 
+newtype SDLException = SDLException T.Text
+  deriving (Show)
+
+instance Exception SDLException
+
 runSDLRenderer
   -- TODO if SDL gets separated out as its own effect, then it might be nice to
   -- put fail in the list of effects here
@@ -59,8 +62,8 @@ runSDLRenderer
   -- ^ The name of the window.
   -> Eff (Render SDL : es) a
   -- ^ The effect to run.
-  -> Eff es (Result a)
-runSDLRenderer (Vec2 width height) title = reinterpret_ (runErrorNoCallStack . runSDL) $ \case
+  -> Eff es a
+runSDLRenderer (Vec2 width height) title = reinterpret_ runSDL $ \case
   Clear -> clear'
   WaitFrame -> waitFrame'
   Present -> present'
@@ -69,8 +72,8 @@ runSDLRenderer (Vec2 width height) title = reinterpret_ (runErrorNoCallStack . r
   DrawTexture tex pos -> drawTexture' tex pos
   where
     runSDL
-      :: Eff (Reader SDLContext : Error T.Text : es) a
-      -> Eff (Error T.Text : es) a
+      :: Eff (Reader SDLContext : es) a
+      -> Eff es a
     runSDL eff = do
       bracket_ openSDL closeSDL $ do
         bracket openWindow closeWindow $ \win -> do
@@ -81,7 +84,7 @@ runSDLRenderer (Vec2 width height) title = reinterpret_ (runErrorNoCallStack . r
     openSDL = do
       logInfo "Acquiring SDL context"
       initSuccess <- liftIO $ SDL.sdlInit [SDL.SDL_INIT_VIDEO, SDL.SDL_INIT_EVENTS]
-      unless initSuccess $ throwError @T.Text "Failed to initialize SDL"
+      unless initSuccess $ throwIO $ SDLException "Failed to initialize SDL"
 
     -- Close the SDL context.
     closeSDL = do
@@ -94,7 +97,7 @@ runSDLRenderer (Vec2 width height) title = reinterpret_ (runErrorNoCallStack . r
       let flags = [SDL.SDL_WINDOW_TRANSPARENT, SDL.SDL_WINDOW_BORDERLESS]
       liftIO (SDL.sdlCreateWindow title width height flags) >>= \case
         Just win -> return win
-        Nothing -> throwError @T.Text "Failed to initialize window"
+        Nothing -> throwIO $ SDLException "Failed to initialize window"
 
     -- Close the SDL window.
     closeWindow win = do
@@ -106,7 +109,7 @@ runSDLRenderer (Vec2 width height) title = reinterpret_ (runErrorNoCallStack . r
       logInfo "Initializing SDL renderer"
       liftIO (SDL.sdlCreateRenderer win Nothing) >>= \case
         Just ren -> return ren
-        Nothing -> throwError @T.Text "Failed to initialize renderer"
+        Nothing -> throwIO $ SDLException "Failed to initialize renderer"
 
     -- Close the SDL renderer.
     closeRenderer ren = do
@@ -144,7 +147,6 @@ present' = do
 loadTexture'
   :: ( Reader SDLContext :> es
      , Log :> es
-     , Error T.Text :> es
      , IOE :> es
      )
   => Image
@@ -154,7 +156,7 @@ loadTexture' (Image meta im) = do
   bracket openSurface closeSurface $ \surf -> do
     logInfo $ "Creating texture: " <> imMetaName meta
     liftIO (SDL.sdlCreateTextureFromSurface ren surf) >>= \case
-      Nothing -> throwError @T.Text "Failed to create texture from surface"
+      Nothing -> throwIO $ SDLException "Failed to create texture from surface"
       Just tex -> do
         return $ Texture meta tex
   where
@@ -162,7 +164,7 @@ loadTexture' (Image meta im) = do
     openSurface = do
       logInfo $ "Creating surface: " <> imMetaName meta
       liftIO (createSurfaceFromImage im) >>= \case
-        Nothing -> throwError @T.Text "Failed to create surface from image"
+        Nothing -> throwIO $ SDLException "Failed to create surface from image"
         Just surf -> return surf
 
     -- Destroy the provided surface.
@@ -171,7 +173,7 @@ loadTexture' (Image meta im) = do
       liftIO $ SDL.sdlDestroySurface surf
 
 destroyTexture'
-  :: (Error T.Text :> es, Log :> es, IOE :> es)
+  :: (Log :> es, IOE :> es)
   => Texture SDL
   -> Eff es ()
 destroyTexture' (Texture meta tex) = do
