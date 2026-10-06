@@ -69,12 +69,14 @@ import Clover.Shared
 > - Local application modules are the most lax because they're only imported by other application modules. I care less about maintaining a strict style in application modules since their structure is basically impossible to systematize anyway.
 
 ## Effects
-All effects and effect handlers are housed in the `src/Effectful` directory, as opposed to the `src/Clover` directory. This is in keeping with most other libraries that supply `effectful`-flavored effects, such as `log-effectful`. 
+All effects and effect handlers are housed in the `lib/Effectful` directory, as opposed to the `src/Clover` directory. This is in keeping with most other libraries that supply `effectful`-flavored effects, such as `log-effectful`. 
 
 ### Naming effects
 The topmost module housing an effect should be named with a noun, since it houses the "thing that does the effect" (e.g., "ImageLoader", "MusicPlayer").
 
 Meanwhile, the effect should be named as an infinitive verb (e.g., "LoadImages", "PlayMusic").
+
+Each handler should take the form `run<handler><topmost effect module name>`, such as `runMPDMusicPlayer` or `runSDLRenderer.`
 
 ### Module structure
 The module structure differs depending on whether the effect is statically or dynamically dispatched. 
@@ -92,5 +94,15 @@ Dynamic effects should be defined in the following modules.
 Static effects should follow the same format as dynamically-dispatched ones, with some small changes: 
 
 - There are no `Handler` modules. Instead, handler logic goes directly in `Effectful.<effect>.Effect`.
-- If no `Types` module or helper modules are necessary, the `src/Effectful/<effect>` directory may be elided entirely. Instead of being re-exported, the effect should be defined directly in `Effectful.<effect>`.
+- If no `Types` module or helper modules are necessary, the `lib/Effectful/<effect>` directory may be elided entirely. Instead of being re-exported, the effect should be defined directly in `Effectful.<effect>`.
 
+## Error reporting
+<!-- TODO this still needs to be implemented in most places -->
+Reporting errors in Haskell kinda sucks. I have some rules of thumb to decide which error reporting mechanism to use in which situation:
+
+- If the failure is caused by unexpected, unrecoverable external factors (e.g., out of memory), use `Effectful.Exception`. There will only be one `handleError` for all exceptions in the code base, which logs the exception and aborts.
+<!-- Also, use the `Exception e` constraint in signatures to generalize over exception types! -->
+- If the failure is caused by expected, recoverable external factors, but is still a "failure" of some subsystem (e.g., network error), use `Effectful.Error` with an error ADT (NOT `Text` or `String`). The ADT should not implement Show, either, so that I don't get lazy ;). Pattern match on it outside of `runError`!
+- If it's not a failure at all, but rather a "this thing that we've established may not be present is not present", use Maybe.
+
+That's it! No `Effectful.Fail`. Note also that the constructors of `Either` should ONLY appear when pattern matching on the result of a runError. The `Either` type itself should not appear in any signatures.
