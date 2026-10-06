@@ -44,6 +44,14 @@ flag examples
   default: False
   manual: True
 
+-- flag pkgconfig
+--   description: Use pkgconfig to sort out sdl3 dependency
+--   default: True
+--   manual: True
+
+-- extra-source-files:
+--     SDL3/include/SDL3/SDL.h
+
 -- library ---------------------------------------------------------------------
 
 -- The clover library mostly contains effects and their implementations.
@@ -54,6 +62,10 @@ library
     exposed:          True
     default-language: Haskell2010
     hs-source-dirs:   lib
+
+    extra-libraries: SDL3
+    pkgconfig-depends:
+      sdl3 >=3.3.0
 
     build-depends: 
       base              >=4.16 && <5,
@@ -84,7 +96,7 @@ library
       Effectful.Renderer,
       Effectful.Renderer.Handler.SDL,
 
-      Effectful.Fail.Handler.Log,
+      Effectful.Foreign.SDL
 
     other-modules:    
       -- Effects
@@ -134,17 +146,33 @@ executable clover
 -- One example is (ideally) provided for each effect in lib/ to demonstrate its
 -- behavior and usage. 
 
-executable logger
+common example-exe
     import:           warnings, language
     default-language: Haskell2010
-    main-is:          Logger.hs
     hs-source-dirs:   examples
 
-    if flag(examples)
-      buildable: True
-    else
-      buildable: False
+    -- if flag(examples)
+    --   buildable: True
+    -- else
+    --   buildable: False
 
     build-depends:
       base >=4.16 && <5,
+      effectful ^>=2.6.1,
       clover
+
+executable logger
+    import:  example-exe
+    main-is: Logger.hs
+
+executable fail
+    import:  example-exe
+    main-is: Fail.hs
+
+executable renderer
+    import:  example-exe
+    main-is: Renderer.hs
+
+executable sdl
+    import:  example-exe
+    main-is: SDL.hs
