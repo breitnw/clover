@@ -49,16 +49,44 @@
         # the dependencies specified there
         overrides = self: super: {
           inherit sdl3 libmpd-effectful;
+          SDL3 = pkgs.sdl3;
         };
 
-        modifier = drv: pkgs.haskell.lib.addBuildTools drv [
-          hp.cabal-install
-          hp.haskell-language-server
-
-          # not required to `nix build` (since we override sdl3), but needed for
-          # haskell-language-server (or cabal build) to work properly
-          pkgs.sdl3
-        ];
+        modifier = let
+          addBuildTools = drv: pkgs.haskell.lib.addBuildTools drv [
+            hp.cabal-install
+            hp.haskell-language-server
+            pkgs.pkg-config
+          ];
+          addExtraLibraries = drv: pkgs.haskell.lib.addExtraLibraries drv [
+            # Required dependencies for building with `cabal build`
+            pkgs.sdl3
+            pkgs.alsa-lib
+            pkgs.jack2.dev
+            pkgs.pipewire.dev
+            pkgs.libpulseaudio
+            pkgs.libx11
+            pkgs.libxcb
+            pkgs.libXau
+            pkgs.libXdmcp
+            pkgs.libxext
+            pkgs.libxcursor
+            pkgs.libxrender
+            pkgs.libXfixes
+            pkgs.libxi
+            pkgs.libxrandr
+            pkgs.libxscrnsaver
+            pkgs.libxtst
+            pkgs.libdrm
+            pkgs.libgbm
+            pkgs.wayland.dev
+            pkgs.libffi
+            pkgs.libGL
+            pkgs.libxkbcommon
+            pkgs.libdecor
+            pkgs.libusb1
+          ];
+          in drv: addBuildTools (addExtraLibraries drv);
       };
     });
 }
