@@ -1,7 +1,6 @@
 # clover
 
-<img alt="human made" src="https://emacsair.me/assets/badges/human.svg"/>
-<img alt="license" src="https://img.shields.io/github/license/breitnw/clover">
+<img alt="human made" src="https://emacsair.me/assets/badges/human.svg"/> <img alt="license" src="https://img.shields.io/github/license/breitnw/clover">
 
 A massively customizable graphical MPD client for music collectors and visualization lovers
 
