@@ -17,8 +17,8 @@ import Data.Text.Foreign qualified as T
 import Effectful
 import Effectful.Dispatch.Dynamic
 
-import Effectful.Foreign.SDL
 import Effectful.Logger
+import Foreign.SDL
 
 -- TODO Make this only depend on SDL, not IOE ideally
 

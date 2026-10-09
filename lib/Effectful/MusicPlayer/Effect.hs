@@ -34,7 +34,7 @@ data PlayMusic :: Effect where
   --
   -- Fails if the ID refers to an invalid song.
   GetSong :: SongID -> PlayMusic m Song
-  -- | Based on a song ID, get its artwork.
+  -- | Based on a song ID, get its artwork, or Nothing if no artwork exists.
   --
   -- Fails if the ID refers to an invalid song.
   GetArtwork :: SongID -> PlayMusic m (Maybe Image)

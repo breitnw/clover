@@ -3,21 +3,16 @@
 {-# LANGUAGE CApiFFI #-}
 {-# OPTIONS_GHC -Wno-missing-pattern-synonym-signatures #-}
 
-{- HLINT ignore "Use camelCase" -}
-
 {- |
-Module      : Effectful.Foreign.SDL
+Module      : Foreign.SDL
 Copyright   : (c) Nick Breitling 2026
 License     : GPL v3 (see LICENSE)
 Maintainer  : Nick Breitling <breitling.nw@gmail.com>
 Stability   : unstable
 
-Raw (and effect-wrapped) FFI for SDL.
+Raw FFI for SDL.
 -}
-module Effectful.Foreign.SDL (
-  SDL,
-  runSDL,
-
+module Foreign.SDL (
   -- * SDL3.Log
   c_sdlLogInfo,
   c_sdlLogWarn,
@@ -85,19 +80,6 @@ import Foreign.C.ConstPtr (ConstPtr (..))
 
 import Effectful
 import Effectful.Dispatch.Static
-
--- EFFECT ----------------------------------------------------------------------
-
--- XXX should this even be effectful? probably not worth it
-
-data SDL :: Effect
-
-type instance DispatchOf SDL = Static WithSideEffects
-data instance StaticRep SDL = SDL
-
--- | Run the 'SDL' effect
-runSDL :: IOE :> es => Eff (SDL : es) a -> Eff es a
-runSDL = evalStaticRep SDL
 
 -- SDL3.Log --------------------------------------------------------------------
 

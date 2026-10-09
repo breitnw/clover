@@ -31,24 +31,26 @@ import Effectful
 import Effectful.Dispatch.Static
 
 import Effectful.ImageLoader.Types
-import Util
 
 -- Reference: Effectful.Console.Effect
 data LoadImages :: Effect
 
 type instance DispatchOf LoadImages = Static WithSideEffects
-data instance StaticRep LoadImages = Console
+data instance StaticRep LoadImages = LoadImages
+
+-- TODO better return type?
 
 -- | Run the 'LoadImages' effect
+-- TODO better error handling
 runLoadImages
   :: (HasCallStack, IOE :> es) => Eff (LoadImages : es) a -> Eff es a
-runLoadImages = evalStaticRep Console
+runLoadImages = evalStaticRep LoadImages
 
 -- | Load an 'Image' from a file path.
 loadImagePath
   :: LoadImages :> es
   => FilePath
-  -> Eff es (Result Image)
+  -> Eff es (Either T.Text Image)
 loadImagePath path = do
   unsafeEff_ $
     STB.loadImage path >>= \case
@@ -62,7 +64,7 @@ loadImageBytes
   -- ^ The name to assign the image
   -> ByteString
   -- ^ The image data
-  -> Eff es (Result Image)
+  -> Eff es (Either T.Text Image)
 loadImageBytes name bytes = do
   unsafeEff_ $
     STB.decodeImage bytes >>= \case

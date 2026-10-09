@@ -23,13 +23,15 @@ import Effectful
 import Effectful.Concurrent
 import Effectful.Dispatch.Dynamic
 import Effectful.Reader.Static
-import SDL3 qualified as SDL
+
+-- import SDL3 qualified as SDL
 
 import Effectful.Exception
 import Effectful.ImageLoader.Types
 import Effectful.Logger
 import Effectful.Renderer.Effect
 import Effectful.Renderer.Types
+import Foreign.SDL
 
 -- EFFECT HANDLER --------------------------------------------------------------
 
@@ -37,12 +39,12 @@ import Effectful.Renderer.Types
 data SDL
 
 -- | A SDL texture comes with a name and data
-data instance Texture SDL = Texture ImageMeta SDL.SDLTexture
+data instance Texture SDL = Texture ImageMeta SDLTexture
 
 -- | The resources available when inside a SDL window context.
 data SDLContext = SDLContext
-  { scWindow :: SDL.SDLWindow
-  , scRenderer :: SDL.SDLRenderer
+  { scWindow :: SDLWindow
+  , scRenderer :: SDLRenderer
   }
 
 newtype SDLException = SDLException T.Text
@@ -51,9 +53,6 @@ newtype SDLException = SDLException T.Text
 instance Exception SDLException
 
 runSDLRenderer
-  -- TODO if SDL gets separated out as its own effect, then it might be nice to
-  -- put fail in the list of effects here
-  -- But how will we log if SDL init fails?
   :: forall es a
    . (IOE :> es, Log :> es, Concurrent :> es)
   => Vec2 Int
@@ -83,19 +82,19 @@ runSDLRenderer (Vec2 width height) title = reinterpret_ runSDL $ \case
     -- Open the SDL context.
     openSDL = do
       logInfo "Acquiring SDL context"
-      initSuccess <- liftIO $ SDL.sdlInit [SDL.SDL_INIT_VIDEO, SDL.SDL_INIT_EVENTS]
+      initSuccess <- liftIO $ sdlInit [SDL_INIT_VIDEO, SDL_INIT_EVENTS]
       unless initSuccess $ throwIO $ SDLException "Failed to initialize SDL"
 
     -- Close the SDL context.
     closeSDL = do
       logInfo "Closing SDL context"
-      liftIO SDL.sdlQuit
+      liftIO sdlQuit
 
     -- Open the SDL window.
     openWindow = do
       logInfo "Initializing SDL window"
-      let flags = [SDL.SDL_WINDOW_TRANSPARENT, SDL.SDL_WINDOW_BORDERLESS]
-      liftIO (SDL.sdlCreateWindow title width height flags) >>= \case
+      let flags = [SDL_WINDOW_TRANSPARENT, SDL_WINDOW_BORDERLESS]
+      liftIO (sdlCreateWindow title width height flags) >>= \case
         Just win -> return win
         Nothing -> throwIO $ SDLException "Failed to initialize window"
 
@@ -107,14 +106,14 @@ runSDLRenderer (Vec2 width height) title = reinterpret_ runSDL $ \case
     -- Open the SDL renderer.
     openRenderer win = do
       logInfo "Initializing SDL renderer"
-      liftIO (SDL.sdlCreateRenderer win Nothing) >>= \case
+      liftIO (sdlCreateRenderer win Nothing) >>= \case
         Just ren -> return ren
         Nothing -> throwIO $ SDLException "Failed to initialize renderer"
 
     -- Close the SDL renderer.
     closeRenderer ren = do
       logInfo "Closing SDL renderer"
-      liftIO $ SDL.sdlDestroyRenderer ren
+      liftIO $ sdlDestroyRenderer ren
 
 clear'
   :: ( Reader SDLContext :> es
@@ -125,7 +124,7 @@ clear'
 clear' = do
   ren <- asks scRenderer
   _ <- liftIO $ SDL.sdlSetRenderDrawColor ren 0 0 0 0
-  result <- liftIO $ SDL.sdlRenderClear ren
+  result <- liftIO $ sdlRenderClear ren
   unless result $ logWarn "SDL failed to clear"
 
 -- TODO check out different options for concurrency, there might be a better way
@@ -141,7 +140,7 @@ present'
   => Eff es ()
 present' = do
   ren <- asks scRenderer
-  result <- liftIO $ SDL.sdlRenderPresent ren
+  result <- liftIO $ sdlRenderPresent ren
   unless result $ logWarn "SDL failed to present frame"
 
 loadTexture'
@@ -188,7 +187,7 @@ drawTexture'
 drawTexture' (Texture meta tex) (Vec2 x y) = do
   -- TODO this ignores x and y right now
   ren <- asks scRenderer
-  result <- liftIO $ SDL.sdlRenderTexture ren tex Nothing Nothing
+  result <- liftIO $ sdlRenderTexture ren tex Nothing Nothing
   unless result $
     logWarn $
       "SDL failed to render texture" <> imMetaName meta
@@ -198,11 +197,11 @@ drawTexture' (Texture meta tex) (Vec2 x y) = do
 -- | Convert an STB image to an SDL surface
 --
 -- based on https://github.com/DanielGibson/Snippets/blob/master/SDL_stbimage.h#L337
-createSurfaceFromImage :: STB.Image -> IO (Maybe (Ptr SDL.SDLSurface))
+createSurfaceFromImage :: STB.Image -> IO (Maybe (Ptr SDLSurface))
 createSurfaceFromImage bmp = BMP.withBitmap bmp go
   where
     go (w, h) nchn _padding ptr =
-      SDL.sdlCreateSurfaceFrom
+      sdlCreateSurfaceFrom
         (fromIntegral w)
         (fromIntegral h)
         format
@@ -210,7 +209,7 @@ createSurfaceFromImage bmp = BMP.withBitmap bmp go
         (fromIntegral pitch)
       where
         format = case nchn of
-          3 -> SDL.SDL_PIXELFORMAT_RGB24
-          4 -> SDL.SDL_PIXELFORMAT_RGBA32
-          _ -> SDL.SDL_PIXELFORMAT_RGB24 -- TODO MAKE UNREACHABLE
+          3 -> SDL_PIXELFORMAT_RGB24
+          4 -> SDL_PIXELFORMAT_RGBA32
+          _ -> SDL_PIXELFORMAT_RGB24 -- TODO MAKE UNREACHABLE
         pitch = nchn * w
