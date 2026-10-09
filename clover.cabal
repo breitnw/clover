@@ -73,7 +73,7 @@ library
       text             ^>=2.1.4,
       bytestring       ^>=0.12.2,
       containers       ^>=0.8,
-      sdl3             ^>=0.1,
+      -- sdl3             ^>=0.1,
       bitmap           ^>=0.0.2,
       stb-image        ^>=0.2.1,
       effectful        ^>=2.6.1,
@@ -96,8 +96,6 @@ library
       Effectful.Renderer,
       Effectful.Renderer.Handler.SDL,
 
-      Effectful.Foreign.SDL
-
     other-modules:    
       -- Effects
       Effectful.MusicPlayer.Effect,
@@ -111,6 +109,9 @@ library
       Effectful.Renderer.Effect,
       Effectful.Renderer.Types,
       Effectful.Renderer.Managed,
+
+      -- FFIs (should only be exposed through effects)
+      Foreign.SDL,
 
 -- main executable -------------------------------------------------------------
 
