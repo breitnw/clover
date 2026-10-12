@@ -42,6 +42,8 @@ foreign import capi unsafe "SDL3/SDL.h SDL_Init"
 foreign import capi unsafe "SDL3/SDL.h SDL_Quit" sdlQuit :: IO ()
 foreign import capi unsafe "SDL3/SDL.h SDL_SetAppMetadataProperty"
   sdlSetAppMetadataProperty :: CString -> CString -> IO CBool
+foreign import capi unsafe "SDL3/SDL.h SDL_GetAppMetadataProperty"
+  sdlGetAppMetadataProperty :: CString -> IO (ConstPtr CChar)
 
 --- SDL3.Video -----------------------------------------------------------------
 

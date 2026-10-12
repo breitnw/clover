@@ -22,6 +22,7 @@ import Foreign (
   with,
  )
 import Foreign.C (CBool, CInt, CString, withCString)
+import Foreign.C.ConstPtr (unConstPtr)
 import System.Exit (exitFailure)
 
 import Effectful ()
@@ -102,10 +103,14 @@ renderTexture ren tex src dst =
 main :: IO ()
 main = do
   let initFlags = F.SDL_INIT_VIDEO .|. F.SDL_INIT_EVENTS
-  let windowFlags = F.SDL_WINDOW_ALWAYS_ON_TOP .|. F.SDL_WINDOW_TRANSPARENT
+  let windowFlags = F.SDL_WINDOW_ALWAYS_ON_TOP
 
   -- Try to initialize SDL
   bracket_ (initSDL initFlags) quitSDL $ do
+    _ <-
+      F.sdlSetAppMetadataProperty
+        F.sdlPropAppMetadataNameString
+        $(F.cstring "SDL demo")
     -- Try to create the window
     let createWindow' title w h flags = withCString title $ \title' -> createWindow title' w h flags
     bracket
@@ -118,7 +123,9 @@ main = do
           runApp ren
           logMsg F.sdlLogInfo "Done acquiring resources"
 
--- pattern THING2 = $(F.cstring "data/image1.jpg") :: CString
+    -- verify that the metadata name got set properly
+    name <- F.sdlGetAppMetadataProperty F.sdlPropAppMetadataNameString
+    F.sdlLogInfo 0 $(F.cstring "%s finished running") (unConstPtr name)
 
 runApp :: Ptr F.SDLRenderer -> IO ()
 runApp ren = do
