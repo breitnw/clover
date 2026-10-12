@@ -24,30 +24,6 @@ import Foreign.C (CFloat)
 
 -- Thank god for emacs macros...
 
--- NOTE EXAMPLE if we want to do a struct --------------------------------------
-
--- data SDLColor = SDLColor
---   { colorR :: {-# UNPACK #-} !Word8  -- ^ Red component
---   , colorG :: {-# UNPACK #-} !Word8  -- ^ Green component
---   , colorB :: {-# UNPACK #-} !Word8  -- ^ Blue component
---   , colorA :: {-# UNPACK #-} !Word8  -- ^ Alpha component
---   } deriving (Eq, Show, Read)
-
--- instance Storable SDLColor where
---   sizeOf _ = #{size SDL_Color}
---   alignment _ = #{alignment SDL_Color}
---   peek ptr = do
---     r <- #{peek SDL_Color, r} ptr
---     g <- #{peek SDL_Color, g} ptr
---     b <- #{peek SDL_Color, b} ptr
---     a <- #{peek SDL_Color, a} ptr
---     return $ SDLColor r g b a
---   poke ptr (SDLColor r g b a) = do
---     #{poke SDL_Color, r} ptr r
---     #{poke SDL_Color, g} ptr g
---     #{poke SDL_Color, b} ptr b
---     #{poke SDL_Color, a} ptr a
-
 -- SDL3.Init -------------------------------------------------------------------
 
 type SDLInitFlags = Word32
@@ -184,4 +160,3 @@ instance Storable SDLFRect where
     #{poke SDL_FRect, y} ptr y
     #{poke SDL_FRect, w} ptr w
     #{poke SDL_FRect, h} ptr h
-
