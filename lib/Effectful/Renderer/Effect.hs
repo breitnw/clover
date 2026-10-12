@@ -14,14 +14,12 @@ module Effectful.Renderer.Effect (
   waitFrame,
   present,
   loadTexture,
-  destroyTexture,
   drawTexture,
 ) where
 
 import Effectful
 import Effectful.TH
 
-import Effectful.ImageLoader.Types
 import Effectful.Renderer.Types
 
 -- | Interface implemented by the rendering backend.
@@ -32,10 +30,8 @@ data Render a :: Effect where
   Present :: Render a m ()
   -- | Wait until the next frame.
   WaitFrame :: Render a m ()
-  -- | Load a texture into memory, returning an opaque handle to that texture.
+  -- | Load a texture from an image, returning an opaque handle to that texture.
   LoadTexture :: Image -> Render a m (Texture a)
-  -- | Destroy a texture given its handle. The handle will become invalid.
-  DestroyTexture :: Texture a -> Render a m ()
   -- | Draw a texture given a handle.
   DrawTexture :: Texture a -> Vec2 Int -> Render a m ()
 

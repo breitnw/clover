@@ -12,15 +12,6 @@
     flake-utils.lib.eachDefaultSystem (system: let
       pkgs = nixpkgs.legacyPackages.${system};
       hp = pkgs.haskell.packages.ghc96;
-      sdl3 = hp.callCabal2nix
-        "sdl3"
-        (pkgs.fetchFromGitHub {
-          owner = "breitnw";
-          repo = "sdl3-hs";
-          rev = "missing-video-exports";
-          sha256 = "sha256-Ig1Tx3ccc4NOa3hKkQ5lx/3hnvAM4o34cE95DYalmlk=";
-        })
-        { SDL3 = pkgs.sdl3.dev; };
       libmpd = hp.callCabal2nix
         "libmpd"
         (pkgs.fetchFromGitHub {
@@ -48,8 +39,9 @@
         # developPackage doesn't read cabal.project, so we need to manually pass
         # the dependencies specified there
         overrides = self: super: {
-          inherit sdl3 libmpd-effectful;
+          inherit libmpd-effectful;
           SDL3 = pkgs.sdl3;
+          SDL3_image = pkgs.sdl3-image;
         };
 
         modifier = let
@@ -59,7 +51,7 @@
             pkgs.pkg-config
           ];
           addExtraLibraries = drv: pkgs.haskell.lib.addExtraLibraries drv [
-            # Required dependencies for building with `cabal build`
+            # Required dependencies for building sdl3 with `cabal build`
             pkgs.sdl3
             pkgs.alsa-lib
             pkgs.jack2.dev
@@ -85,6 +77,9 @@
             pkgs.libxkbcommon
             pkgs.libdecor
             pkgs.libusb1
+
+            # Dependencies for SDL3_Image
+            pkgs.sdl3-image
           ];
           in drv: addBuildTools (addExtraLibraries drv);
       };

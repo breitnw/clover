@@ -29,6 +29,8 @@ module Effectful.Backend.Data (
 ) where
 ```
 
+The only exception to this rule is when providing a raw FFI, since there's often a ton of identifiers that need to be exported, and there's no reason not to export all of them...
+
 ### Imports
 Imports should be divided into three sections, in the below order, each separated by a newline:
 

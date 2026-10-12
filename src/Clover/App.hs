@@ -20,7 +20,6 @@ import Effectful.Concurrent
 import Effectful.Concurrent.Async
 import Effectful.FileSystem
 
-import Effectful.ImageLoader
 import Effectful.Renderer
 import Effectful.Renderer.Handler.SDL
 import Util

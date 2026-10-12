@@ -21,7 +21,6 @@ import Effectful.Dispatch.Dynamic
 import Effectful.Error.Dynamic
 import Effectful.Network.MPD qualified as MPD
 
-import Effectful.ImageLoader
 import Effectful.Logger
 import Effectful.MusicPlayer.Effect
 import Effectful.MusicPlayer.Types

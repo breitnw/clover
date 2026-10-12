@@ -12,7 +12,6 @@ module Clover.Shared (
   PlayerMode (..),
 ) where
 
-import Effectful.ImageLoader.Types
 import Effectful.MusicPlayer.Types
 
 data PlayerState = PlayerState

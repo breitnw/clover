@@ -13,15 +13,24 @@ module Main where
 import Control.Concurrent (threadDelay)
 import Control.Exception (bracket, bracket_)
 import Control.Monad (unless, when)
-import Foreign (Bits (..), Ptr, Word32, Word64, nullPtr)
-import Foreign.C (CInt, CString, withCString)
-import GHC.Ptr qualified as GHC (Ptr (..)) -- needed for CString literal
+import Foreign (
+  Bits (..),
+  Ptr,
+  Word32,
+  Word64,
+  maybeWith,
+  nullPtr,
+  toBool,
+  with,
+ )
+import Foreign.C (CBool, CInt, CString, withCString)
+import GHC.Ptr qualified as GHC (Ptr (..))
 import System.Exit (exitFailure)
 
 import Effectful ()
 
-import Effectful.Foreign.SDL
-import Foreign.Marshal (toBool)
+import Foreign.SDL qualified as F
+import Foreign.SDLImage qualified as F
 
 -- | The type of logging functions.
 type LoggingFunc = (CInt -> CString -> CString -> IO ())
@@ -37,51 +46,64 @@ logMsg logFn msg = withCString msg $ logFn 0 (GHC.Ptr "%s"#)
 
 initSDL :: Word32 -> IO ()
 initSDL initFlags = do
-  initSuccess <- c_sdlInit initFlags
+  initSuccess <- F.sdlInit initFlags
   unless (toBool initSuccess) $ do
-    logMsg c_sdlLogError "Failed to initialize SDL"
+    logMsg F.sdlLogError "Failed to initialize SDL"
     exitFailure
-  logMsg c_sdlLogInfo "Successfully initialized SDL!"
+  logMsg F.sdlLogInfo "Successfully initialized SDL!"
 
 quitSDL :: IO ()
 quitSDL = do
-  logMsg c_sdlLogInfo "Quitting SDL"
-  c_sdlQuit
+  logMsg F.sdlLogInfo "Quitting SDL"
+  F.sdlQuit
 
-createWindow :: CString -> CInt -> CInt -> Word64 -> IO (Ptr SDLWindow)
+createWindow :: CString -> CInt -> CInt -> Word64 -> IO (Ptr F.SDLWindow)
 createWindow title w h flags = do
-  win <- c_sdlCreateWindow title w h flags
+  win <- F.sdlCreateWindow title w h flags
   when (win == nullPtr) $ do
-    logMsg c_sdlLogError "Failed to create window"
+    logMsg F.sdlLogError "Failed to create window"
     exitFailure
-  logMsg c_sdlLogInfo "Successfully created window!"
+  logMsg F.sdlLogInfo "Successfully created window!"
   return win
 
-destroyWindow :: Ptr SDLWindow -> IO ()
+destroyWindow :: Ptr F.SDLWindow -> IO ()
 destroyWindow win = do
-  logMsg c_sdlLogInfo "Destroying window"
-  c_sdlDestroyWindow win
+  logMsg F.sdlLogInfo "Destroying window"
+  F.sdlDestroyWindow win
 
-createRenderer :: Ptr SDLWindow -> CString -> IO (Ptr SDLRenderer)
+createRenderer :: Ptr F.SDLWindow -> CString -> IO (Ptr F.SDLRenderer)
 createRenderer win name = do
-  ren <- c_sdlCreateRenderer win name
+  ren <- F.sdlCreateRenderer win name
   when (ren == nullPtr) $ do
-    logMsg c_sdlLogError "Failed to create renderer"
+    logMsg F.sdlLogError "Failed to create renderer"
     exitFailure
-  logMsg c_sdlLogInfo "Successfully created renderer!"
+  logMsg F.sdlLogInfo "Successfully created renderer!"
   return ren
 
-destroyRenderer :: Ptr SDLRenderer -> IO ()
+destroyRenderer :: Ptr F.SDLRenderer -> IO ()
 destroyRenderer ren = do
-  logMsg c_sdlLogInfo "Destroying renderer"
-  c_sdlDestroyRenderer ren
+  logMsg F.sdlLogInfo "Destroying renderer"
+  F.sdlDestroyRenderer ren
+
+-- Utils -----------------------------------------------------------------------
+
+renderTexture
+  :: Ptr F.SDLRenderer
+  -> Ptr F.SDLTexture
+  -> Maybe F.SDLFRect
+  -> Maybe F.SDLFRect
+  -> IO CBool
+renderTexture ren tex src dst =
+  maybeWith with src $ \src' ->
+    maybeWith with dst $ \dst' ->
+      F.sdlRenderTexture ren tex src' dst'
 
 -- Demo ------------------------------------------------------------------------
 
 main :: IO ()
 main = do
-  let initFlags = SDL_INIT_VIDEO .|. SDL_INIT_EVENTS
-  let windowFlags = SDL_WINDOW_ALWAYS_ON_TOP
+  let initFlags = F.SDL_INIT_VIDEO .|. F.SDL_INIT_EVENTS
+  let windowFlags = F.SDL_WINDOW_ALWAYS_ON_TOP .|. F.SDL_WINDOW_TRANSPARENT
 
   -- Try to initialize SDL
   bracket_ (initSDL initFlags) quitSDL $ do
@@ -95,9 +117,20 @@ main = do
         bracket (createRenderer win nullPtr) destroyRenderer $ \ren -> do
           -- Finally, the fun part!
           runApp ren
-          logMsg c_sdlLogInfo "Done acquiring resources"
+          logMsg F.sdlLogInfo "Done acquiring resources"
 
-runApp :: Ptr SDLRenderer -> IO ()
+runApp :: Ptr F.SDLRenderer -> IO ()
 runApp ren = do
-  _ <- c_sdlRenderClear ren
+  _ <- F.sdlRenderClear ren
+
+  tex <- F.imgLoadTexture ren (GHC.Ptr "data/image1.jpg"#)
+  when (tex == nullPtr) $ do
+    logMsg F.sdlLogError "Failed to load texture"
+    exitFailure
+
+  _ <- renderTexture ren tex Nothing Nothing
+  _ <- renderTexture ren tex Nothing (Just (F.SDLFRect 20 80 80 80))
+
+  _ <- F.sdlRenderPresent ren
   threadDelay 2000000
+  F.sdlDestroyTexture tex

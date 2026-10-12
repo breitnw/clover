@@ -41,13 +41,14 @@ common language
 
 flag examples
   description: Build example executables
-  default: False
+  -- TODO change default to false
+  default: True 
   manual: True
 
--- flag pkgconfig
---   description: Use pkgconfig to sort out sdl3 dependency
---   default: True
---   manual: True
+flag pkgconfig
+  description: Use pkgconfig to sort out C dependencies
+  default: True
+  manual: True
 
 -- extra-source-files:
 --     SDL3/include/SDL3/SDL.h
@@ -63,9 +64,10 @@ library
     default-language: Haskell2010
     hs-source-dirs:   lib
 
-    extra-libraries: SDL3
+    extra-libraries: SDL3, SDL3_image
     pkgconfig-depends:
-      sdl3 >=3.3.0
+      sdl3 >=3.3.0,
+      sdl3-image >=3.3.0
 
     build-depends: 
       base              >=4.16 && <5,
@@ -73,9 +75,8 @@ library
       text             ^>=2.1.4,
       bytestring       ^>=0.12.2,
       containers       ^>=0.8,
-      -- sdl3             ^>=0.1,
-      bitmap           ^>=0.0.2,
-      stb-image        ^>=0.2.1,
+      -- bitmap           ^>=0.0.2,
+      -- stb-image        ^>=0.2.1,
       effectful        ^>=2.6.1,
       effectful-th     ^>=1.0.0.4,
       libmpd-effectful ^>=0.1
@@ -85,33 +86,32 @@ library
       Util,
 
       -- Effects
-      Effectful.MusicPlayer,
-      Effectful.MusicPlayer.Handler.MPD,
-
-      Effectful.ImageLoader,
+      -- Effectful.MusicPlayer,
+      -- Effectful.MusicPlayer.Handler.MPD,
 
       Effectful.Logger,
       Effectful.Logger.Handler.SDL,
 
-      Effectful.Renderer,
-      Effectful.Renderer.Handler.SDL,
+      -- Effectful.Renderer,
+      -- Effectful.Renderer.Handler.SDL,
+
+      -- FFIs
+      Foreign.SDL,
+      Foreign.SDLImage,
 
     other-modules:    
       -- Effects
-      Effectful.MusicPlayer.Effect,
-      Effectful.MusicPlayer.Types,
-
-      Effectful.ImageLoader.Effect,
-      Effectful.ImageLoader.Types,
+      -- Effectful.MusicPlayer.Effect,
+      -- Effectful.MusicPlayer.Types,
 
       Effectful.Logger.Effect,
 
-      Effectful.Renderer.Effect,
-      Effectful.Renderer.Types,
-      Effectful.Renderer.Managed,
+      -- Effectful.Renderer.Effect,
+      -- Effectful.Renderer.Types,
 
-      -- FFIs (should only be exposed through effects)
-      Foreign.SDL,
+      -- FFIs
+      Foreign.SDL.Types,
+      Foreign.SDL.FFI,
 
 -- main executable -------------------------------------------------------------
 
@@ -152,6 +152,7 @@ common example-exe
     default-language: Haskell2010
     hs-source-dirs:   examples
 
+    -- TODO
     -- if flag(examples)
     --   buildable: True
     -- else

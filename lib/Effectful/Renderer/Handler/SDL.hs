@@ -13,25 +13,25 @@ module Effectful.Renderer.Handler.SDL (
 ) where
 
 import Control.Monad (unless)
-import Foreign (castPtr)
-import Foreign.Ptr (Ptr)
+import Foreign (Bits ((.|.)), Ptr, castPtr, nullPtr, toBool)
+import Foreign.C (withCString)
+import Foreign.ForeignPtr (ForeignPtr)
 
-import Codec.Image.STB qualified as STB
-import Data.Bitmap qualified as BMP
 import Data.Text qualified as T
 import Effectful
 import Effectful.Concurrent
 import Effectful.Dispatch.Dynamic
+import Effectful.Exception
 import Effectful.Reader.Static
 
--- import SDL3 qualified as SDL
-
-import Effectful.Exception
-import Effectful.ImageLoader.Types
 import Effectful.Logger
 import Effectful.Renderer.Effect
 import Effectful.Renderer.Types
-import Foreign.SDL
+import Foreign.SDL qualified as F
+
+-- TODO it would be nice to use ForeignPtr in this module to take advantage of
+-- GC for textures, surfaces, etc
+-- Monad can still handle freeing window/renderer
 
 -- EFFECT HANDLER --------------------------------------------------------------
 
@@ -39,12 +39,12 @@ import Foreign.SDL
 data SDL
 
 -- | A SDL texture comes with a name and data
-data instance Texture SDL = Texture ImageMeta SDLTexture
+data instance Texture SDL = Texture ImageMeta (ForeignPtr F.SDLTexture)
 
 -- | The resources available when inside a SDL window context.
 data SDLContext = SDLContext
-  { scWindow :: SDLWindow
-  , scRenderer :: SDLRenderer
+  { scWindow :: Ptr F.SDLWindow
+  , scRenderer :: Ptr F.SDLRenderer
   }
 
 newtype SDLException = SDLException T.Text
@@ -67,7 +67,6 @@ runSDLRenderer (Vec2 width height) title = reinterpret_ runSDL $ \case
   WaitFrame -> waitFrame'
   Present -> present'
   LoadTexture img -> loadTexture' img
-  DestroyTexture tex -> destroyTexture' tex
   DrawTexture tex pos -> drawTexture' tex pos
   where
     runSDL
@@ -82,38 +81,44 @@ runSDLRenderer (Vec2 width height) title = reinterpret_ runSDL $ \case
     -- Open the SDL context.
     openSDL = do
       logInfo "Acquiring SDL context"
-      initSuccess <- liftIO $ sdlInit [SDL_INIT_VIDEO, SDL_INIT_EVENTS]
-      unless initSuccess $ throwIO $ SDLException "Failed to initialize SDL"
+      initSuccess <- liftIO $ F.sdlInit (F.SDL_INIT_VIDEO .|. F.SDL_INIT_EVENTS)
+      unless (toBool initSuccess) $ throwIO $ SDLException "Failed to initialize SDL"
 
     -- Close the SDL context.
     closeSDL = do
       logInfo "Closing SDL context"
-      liftIO sdlQuit
+      liftIO F.sdlQuit
 
     -- Open the SDL window.
     openWindow = do
       logInfo "Initializing SDL window"
-      let flags = [SDL_WINDOW_TRANSPARENT, SDL_WINDOW_BORDERLESS]
-      liftIO (sdlCreateWindow title width height flags) >>= \case
-        Just win -> return win
-        Nothing -> throwIO $ SDLException "Failed to initialize window"
+      let flags = F.SDL_WINDOW_TRANSPARENT .|. F.SDL_WINDOW_BORDERLESS
+      win <-
+        liftIO
+          ( withCString title $ \title' ->
+              F.sdlCreateWindow title' (fromIntegral width) (fromIntegral height) flags
+          )
+      if win == nullPtr
+        then throwIO $ SDLException "Failed to initialize window"
+        else return win
 
     -- Close the SDL window.
     closeWindow win = do
       logInfo "Closing SDL window"
-      liftIO $ SDL.sdlDestroyWindow win
+      liftIO $ F.sdlDestroyWindow win
 
     -- Open the SDL renderer.
     openRenderer win = do
       logInfo "Initializing SDL renderer"
-      liftIO (sdlCreateRenderer win Nothing) >>= \case
-        Just ren -> return ren
-        Nothing -> throwIO $ SDLException "Failed to initialize renderer"
+      ren <- liftIO (F.sdlCreateRenderer win nullPtr)
+      if ren == nullPtr
+        then throwIO $ SDLException "Failed to initialize renderer"
+        else return ren
 
     -- Close the SDL renderer.
     closeRenderer ren = do
       logInfo "Closing SDL renderer"
-      liftIO $ sdlDestroyRenderer ren
+      liftIO $ F.sdlDestroyRenderer ren
 
 clear'
   :: ( Reader SDLContext :> es
@@ -123,9 +128,9 @@ clear'
   => Eff es ()
 clear' = do
   ren <- asks scRenderer
-  _ <- liftIO $ SDL.sdlSetRenderDrawColor ren 0 0 0 0
-  result <- liftIO $ sdlRenderClear ren
-  unless result $ logWarn "SDL failed to clear"
+  _ <- liftIO $ F.sdlSetRenderDrawColor ren 0 0 0 0
+  result <- liftIO $ F.sdlRenderClear ren
+  unless (toBool result) $ logWarn "SDL failed to clear"
 
 -- TODO check out different options for concurrency, there might be a better way
 -- to utilize Concurrent effect here
@@ -140,8 +145,8 @@ present'
   => Eff es ()
 present' = do
   ren <- asks scRenderer
-  result <- liftIO $ sdlRenderPresent ren
-  unless result $ logWarn "SDL failed to present frame"
+  result <- liftIO $ F.sdlRenderPresent ren
+  unless (toBool result) $ logWarn "SDL failed to present frame"
 
 loadTexture'
   :: ( Reader SDLContext :> es
@@ -154,10 +159,12 @@ loadTexture' (Image meta im) = do
   ren <- asks scRenderer
   bracket openSurface closeSurface $ \surf -> do
     logInfo $ "Creating texture: " <> imMetaName meta
-    liftIO (SDL.sdlCreateTextureFromSurface ren surf) >>= \case
-      Nothing -> throwIO $ SDLException "Failed to create texture from surface"
-      Just tex -> do
-        return $ Texture meta tex
+    tex <- liftIO $ F.sdlCreateTextureFromSurface ren surf
+    if tex == nullPtr
+      then throwIO $ SDLException "Failed to create texture from surface"
+      else do
+        foreignPtr <- liftIO $ newForeignPtr _ tex
+        return $ Texture meta foreignPtr
   where
     -- Create a surface from 'im'.
     openSurface = do
@@ -169,7 +176,7 @@ loadTexture' (Image meta im) = do
     -- Destroy the provided surface.
     closeSurface surf = do
       logInfo $ "Destroying surface: " <> imMetaName meta
-      liftIO $ SDL.sdlDestroySurface surf
+      liftIO $ F.sdlDestroySurface surf
 
 destroyTexture'
   :: (Log :> es, IOE :> es)
@@ -177,7 +184,7 @@ destroyTexture'
   -> Eff es ()
 destroyTexture' (Texture meta tex) = do
   logInfo $ "Destroying texture: " <> imMetaName meta
-  liftIO $ SDL.sdlDestroyTexture tex
+  liftIO $ F.sdlDestroyTexture tex
 
 drawTexture'
   :: (Reader SDLContext :> es, Log :> es, IOE :> es)
@@ -197,9 +204,12 @@ drawTexture' (Texture meta tex) (Vec2 x y) = do
 -- | Convert an STB image to an SDL surface
 --
 -- based on https://github.com/DanielGibson/Snippets/blob/master/SDL_stbimage.h#L337
-createSurfaceFromImage :: STB.Image -> IO (Maybe (Ptr SDLSurface))
+createSurfaceFromImage :: STB.Image -> IO (Maybe (Ptr F.SDLSurface))
 createSurfaceFromImage bmp = BMP.withBitmap bmp go
   where
+    -- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    -- TODO MAKE SURE THAT THE IMAGE ISN'T FREED UNTIL CREATING THE TEXTURE
+    -- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     go (w, h) nchn _padding ptr =
       sdlCreateSurfaceFrom
         (fromIntegral w)

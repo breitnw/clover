@@ -18,12 +18,12 @@ import Effectful
 import Effectful.Dispatch.Dynamic
 
 import Effectful.Logger
-import Foreign.SDL
+import Foreign.SDL qualified as F
 
 -- TODO Make this only depend on SDL, not IOE ideally
 
 runSDLLogger :: IOE :> es => Eff (Log : es) a -> Eff es a
 runSDLLogger = interpret_ $ \case
-  LogInfo msg -> liftIO $ T.withCString msg (c_sdlLogInfo 0 (GHC.Ptr "%s"#))
-  LogWarn msg -> liftIO $ T.withCString msg (c_sdlLogWarn 0 (GHC.Ptr "%s"#))
-  LogError msg -> liftIO $ T.withCString msg (c_sdlLogError 0 (GHC.Ptr "%s"#))
+  LogInfo msg -> liftIO $ T.withCString msg (F.sdlLogInfo 0 (GHC.Ptr "%s"#))
+  LogWarn msg -> liftIO $ T.withCString msg (F.sdlLogWarn 0 (GHC.Ptr "%s"#))
+  LogError msg -> liftIO $ T.withCString msg (F.sdlLogError 0 (GHC.Ptr "%s"#))

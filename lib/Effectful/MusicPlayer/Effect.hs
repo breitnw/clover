@@ -18,7 +18,6 @@ module Effectful.MusicPlayer.Effect (
 import Effectful
 import Effectful.TH
 
-import Effectful.ImageLoader.Types
 import Effectful.MusicPlayer.Types
 
 -- | Interface implemented by the music player backend.

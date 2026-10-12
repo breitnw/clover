@@ -18,7 +18,6 @@ import Effectful.Exception
 import Effectful.Log as L
 import Effectful.Reader.Static
 
-import Effectful.ImageLoader
 import Effectful.Renderer
 import Util
 

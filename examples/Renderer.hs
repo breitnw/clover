@@ -12,7 +12,6 @@ module Main where
 import Effectful
 import Effectful.Concurrent
 
-import Effectful.ImageLoader
 import Effectful.Logger
 import Effectful.Logger.Handler.SDL
 import Effectful.Renderer
@@ -22,7 +21,6 @@ main :: IO ()
 main = runEff
   . runSDLLogger
   . runConcurrent
-  . runLoadImages
   . runSDLRenderer (Vec2 100 100) "renderer demo"
   $ do
     return ()

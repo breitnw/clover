@@ -11,11 +11,7 @@ module Effectful.Renderer (
 
   -- * Types
   module Effectful.Renderer.Types,
-
-  -- * Automatic memory management
-  module Effectful.Renderer.Managed,
 ) where
 
 import Effectful.Renderer.Effect
-import Effectful.Renderer.Managed
 import Effectful.Renderer.Types
