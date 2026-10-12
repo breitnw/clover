@@ -9,15 +9,25 @@ Stability   : unstable
 -}
 module Effectful.Renderer.Handler.SDL (
   SDL,
+  SDLMeta (..),
   runSDLRenderer,
 ) where
 
-import Control.Monad (unless)
-import Foreign (Bits ((.|.)), Ptr, castPtr, nullPtr, toBool)
-import Foreign.C (withCString)
-import Foreign.ForeignPtr (ForeignPtr)
+import Control.Monad (forM_, unless)
+import Foreign (
+  Bits ((.|.)),
+  ForeignPtr,
+  Ptr,
+  newForeignPtr,
+  nullPtr,
+  toBool,
+  withForeignPtr,
+ )
+import Foreign.C (CFloat (..), withCString)
+import Foreign.Marshal (with)
 
 import Data.Text qualified as T
+import Data.Text.Foreign qualified as T
 import Effectful
 import Effectful.Concurrent
 import Effectful.Dispatch.Dynamic
@@ -28,6 +38,7 @@ import Effectful.Logger
 import Effectful.Renderer.Effect
 import Effectful.Renderer.Types
 import Foreign.SDL qualified as F
+import Foreign.SDLImage qualified as F
 
 -- TODO it would be nice to use ForeignPtr in this module to take advantage of
 -- GC for textures, surfaces, etc
@@ -39,7 +50,8 @@ import Foreign.SDL qualified as F
 data SDL
 
 -- | A SDL texture comes with a name and data
-data instance Texture SDL = Texture ImageMeta (ForeignPtr F.SDLTexture)
+-- NOTE designated metadata type
+data instance Texture SDL = Texture T.Text (ForeignPtr F.SDLTexture)
 
 -- | The resources available when inside a SDL window context.
 data SDLContext = SDLContext
@@ -47,33 +59,48 @@ data SDLContext = SDLContext
   , scRenderer :: Ptr F.SDLRenderer
   }
 
+-- TODO use template-haskell to extract this info from clover.cabal
+data SDLMeta = SDLMeta
+  { smName :: T.Text
+  , smVersion :: T.Text
+  , smIdentifier :: T.Text
+  , smCreator :: T.Text
+  , smCopyright :: T.Text
+  , smUrl :: T.Text
+  , smType :: T.Text
+  }
+
 newtype SDLException = SDLException T.Text
   deriving (Show)
 
 instance Exception SDLException
 
+-- TODO set app metadata properties
 runSDLRenderer
   :: forall es a
    . (IOE :> es, Log :> es, Concurrent :> es)
   => Vec2 Int
   -- ^ The size of the window to create.
-  -> String
+  -> T.Text
   -- ^ The name of the window.
+  -> SDLMeta
+  -- ^ The SDL application metadata.
   -> Eff (Render SDL : es) a
   -- ^ The effect to run.
   -> Eff es a
-runSDLRenderer (Vec2 width height) title = reinterpret_ runSDL $ \case
+runSDLRenderer (Vec2 width height) title meta = reinterpret_ runSDL $ \case
   Clear -> clear'
   WaitFrame -> waitFrame'
   Present -> present'
-  LoadTexture img -> loadTexture' img
-  DrawTexture tex pos -> drawTexture' tex pos
+  LoadTexture path -> loadTexture' path
+  DrawTexture tex dst -> drawTexture' tex dst
   where
     runSDL
       :: Eff (Reader SDLContext : es) a
       -> Eff es a
     runSDL eff = do
       bracket_ openSDL closeSDL $ do
+        liftIO $ setMetadata meta
         bracket openWindow closeWindow $ \win -> do
           bracket (openRenderer win) closeRenderer $ \ren -> do
             runReader (SDLContext win ren) eff
@@ -95,7 +122,7 @@ runSDLRenderer (Vec2 width height) title = reinterpret_ runSDL $ \case
       let flags = F.SDL_WINDOW_TRANSPARENT .|. F.SDL_WINDOW_BORDERLESS
       win <-
         liftIO
-          ( withCString title $ \title' ->
+          ( T.withCString title $ \title' ->
               F.sdlCreateWindow title' (fromIntegral width) (fromIntegral height) flags
           )
       if win == nullPtr
@@ -119,6 +146,21 @@ runSDLRenderer (Vec2 width height) title = reinterpret_ runSDL $ \case
     closeRenderer ren = do
       logInfo "Closing SDL renderer"
       liftIO $ F.sdlDestroyRenderer ren
+
+setMetadata :: SDLMeta -> IO ()
+setMetadata meta = do
+  -- Mapping from fields on the metadata struct to the property strings
+  let metadataProps =
+        [ (smName, F.sdlPropAppMetadataNameString)
+        , (smVersion, F.sdlPropAppMetadataVersionString)
+        , (smIdentifier, F.sdlPropAppMetadataIdentifierString)
+        , (smCreator, F.sdlPropAppMetadataCreatorString)
+        , (smCopyright, F.sdlPropAppMetadataCopyrightString)
+        , (smUrl, F.sdlPropAppMetadataUrlString)
+        , (smType, F.sdlPropAppMetadataTypeString)
+        ]
+  forM_ metadataProps $ \(field, prop) ->
+    T.withCString (field meta) $ F.sdlSetAppMetadataProperty prop
 
 clear'
   :: ( Reader SDLContext :> es
@@ -148,78 +190,37 @@ present' = do
   result <- liftIO $ F.sdlRenderPresent ren
   unless (toBool result) $ logWarn "SDL failed to present frame"
 
+-- TODO verify that the ForeignPtr setup works properly
 loadTexture'
   :: ( Reader SDLContext :> es
      , Log :> es
      , IOE :> es
      )
-  => Image
+  => T.Text
   -> Eff es (Texture SDL)
-loadTexture' (Image meta im) = do
+loadTexture' path = do
+  -- TODO store the texture to free before closing renderer?
   ren <- asks scRenderer
-  bracket openSurface closeSurface $ \surf -> do
-    logInfo $ "Creating texture: " <> imMetaName meta
-    tex <- liftIO $ F.sdlCreateTextureFromSurface ren surf
-    if tex == nullPtr
-      then throwIO $ SDLException "Failed to create texture from surface"
-      else do
-        foreignPtr <- liftIO $ newForeignPtr _ tex
-        return $ Texture meta foreignPtr
-  where
-    -- Create a surface from 'im'.
-    openSurface = do
-      logInfo $ "Creating surface: " <> imMetaName meta
-      liftIO (createSurfaceFromImage im) >>= \case
-        Nothing -> throwIO $ SDLException "Failed to create surface from image"
-        Just surf -> return surf
-
-    -- Destroy the provided surface.
-    closeSurface surf = do
-      logInfo $ "Destroying surface: " <> imMetaName meta
-      liftIO $ F.sdlDestroySurface surf
-
-destroyTexture'
-  :: (Log :> es, IOE :> es)
-  => Texture SDL
-  -> Eff es ()
-destroyTexture' (Texture meta tex) = do
-  logInfo $ "Destroying texture: " <> imMetaName meta
-  liftIO $ F.sdlDestroyTexture tex
+  logInfo $ "Creating texture: " <> path
+  -- NOTE will this break on windows where the character encoding is different?
+  -- might need to use OsPath
+  tex <- liftIO $ T.withCString path $ \path' -> F.imgLoadTexture ren path'
+  foreignTex <- liftIO $ newForeignPtr F.sdlDestroyTexture' tex
+  return $ Texture path foreignTex
 
 drawTexture'
   :: (Reader SDLContext :> es, Log :> es, IOE :> es)
   => Texture SDL
-  -> Vec2 Int
+  -> Rect Float
   -> Eff es ()
-drawTexture' (Texture meta tex) (Vec2 x y) = do
-  -- TODO this ignores x and y right now
+drawTexture' (Texture meta tex) (Rect x y w h) = do
   ren <- asks scRenderer
-  result <- liftIO $ sdlRenderTexture ren tex Nothing Nothing
-  unless result $
+  result <-
+    liftIO $
+      withForeignPtr tex $ \texPtr ->
+        with
+          (F.SDLFRect (CFloat x) (CFloat y) (CFloat w) (CFloat h))
+          (F.sdlRenderTexture ren texPtr nullPtr)
+  unless (toBool result) $
     logWarn $
-      "SDL failed to render texture" <> imMetaName meta
-
--- HELPERS ---------------------------------------------------------------------
-
--- | Convert an STB image to an SDL surface
---
--- based on https://github.com/DanielGibson/Snippets/blob/master/SDL_stbimage.h#L337
-createSurfaceFromImage :: STB.Image -> IO (Maybe (Ptr F.SDLSurface))
-createSurfaceFromImage bmp = BMP.withBitmap bmp go
-  where
-    -- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    -- TODO MAKE SURE THAT THE IMAGE ISN'T FREED UNTIL CREATING THE TEXTURE
-    -- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    go (w, h) nchn _padding ptr =
-      sdlCreateSurfaceFrom
-        (fromIntegral w)
-        (fromIntegral h)
-        format
-        (castPtr ptr)
-        (fromIntegral pitch)
-      where
-        format = case nchn of
-          3 -> SDL_PIXELFORMAT_RGB24
-          4 -> SDL_PIXELFORMAT_RGBA32
-          _ -> SDL_PIXELFORMAT_RGB24 -- TODO MAKE UNREACHABLE
-        pitch = nchn * w
+      "SDL failed to render texture" <> meta

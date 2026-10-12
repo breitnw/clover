@@ -1,5 +1,5 @@
-{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 {- |
 Module      : Main
@@ -16,21 +16,20 @@ import Control.Monad (unless, when)
 import Foreign (
   Bits (..),
   Ptr,
-  Word32,
-  Word64,
   maybeWith,
   nullPtr,
   toBool,
   with,
  )
 import Foreign.C (CBool, CInt, CString, withCString)
-import GHC.Ptr qualified as GHC (Ptr (..))
 import System.Exit (exitFailure)
 
 import Effectful ()
 
+import Data.Word
 import Foreign.SDL qualified as F
 import Foreign.SDLImage qualified as F
+import Foreign.TH qualified as F
 
 -- | The type of logging functions.
 type LoggingFunc = (CInt -> CString -> CString -> IO ())
@@ -40,7 +39,7 @@ type LoggingFunc = (CInt -> CString -> CString -> IO ())
 -- Always uses the %s format specifier, since allowing any format string is a
 -- security vulnerability.
 logMsg :: LoggingFunc -> String -> IO ()
-logMsg logFn msg = withCString msg $ logFn 0 (GHC.Ptr "%s"#)
+logMsg logFn msg = withCString msg $ logFn 0 $(F.cstring "%s")
 
 -- Resource allocators and deallocators ----------------------------------------
 
@@ -119,11 +118,13 @@ main = do
           runApp ren
           logMsg F.sdlLogInfo "Done acquiring resources"
 
+-- pattern THING2 = $(F.cstring "data/image1.jpg") :: CString
+
 runApp :: Ptr F.SDLRenderer -> IO ()
 runApp ren = do
   _ <- F.sdlRenderClear ren
 
-  tex <- F.imgLoadTexture ren (GHC.Ptr "data/image1.jpg"#)
+  tex <- F.imgLoadTexture ren $(F.cstring "data/image1.jpg")
   when (tex == nullPtr) $ do
     logMsg F.sdlLogError "Failed to load texture"
     exitFailure

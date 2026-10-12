@@ -70,20 +70,20 @@ library
       sdl3-image >=3.3.0
 
     build-depends: 
+      th-abstraction,
       base              >=4.16 && <5,
-      filepath          >=1    && <2,
-      text             ^>=2.1.4,
-      bytestring       ^>=0.12.2,
-      containers       ^>=0.8,
-      -- bitmap           ^>=0.0.2,
-      -- stb-image        ^>=0.2.1,
       effectful        ^>=2.6.1,
       effectful-th     ^>=1.0.0.4,
-      libmpd-effectful ^>=0.1
+      libmpd-effectful ^>=0.1,
+      text,
+      bytestring,
+      containers,
+      template-haskell
 
     exposed-modules: 
       -- Utils
       Util,
+      Foreign.TH,
 
       -- Effects
       -- Effectful.MusicPlayer,
@@ -92,8 +92,8 @@ library
       Effectful.Logger,
       Effectful.Logger.Handler.SDL,
 
-      -- Effectful.Renderer,
-      -- Effectful.Renderer.Handler.SDL,
+      Effectful.Renderer,
+      Effectful.Renderer.Handler.SDL,
 
       -- FFIs
       Foreign.SDL,
@@ -106,12 +106,13 @@ library
 
       Effectful.Logger.Effect,
 
-      -- Effectful.Renderer.Effect,
-      -- Effectful.Renderer.Types,
+      Effectful.Renderer.Effect,
+      Effectful.Renderer.Types,
 
       -- FFIs
       Foreign.SDL.Types,
       Foreign.SDL.FFI,
+
 
 -- main executable -------------------------------------------------------------
 

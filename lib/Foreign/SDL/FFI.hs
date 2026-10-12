@@ -12,7 +12,7 @@ SDL functions.
 -}
 module Foreign.SDL.FFI where
 
-import Foreign (FunPtr, Ptr)
+import Foreign (FunPtr, Ptr, Word8)
 import Foreign.C (CBool (..), CChar, CFloat, CInt (..), CString)
 import Foreign.C.ConstPtr (ConstPtr (..))
 
@@ -35,15 +35,13 @@ foreign import capi unsafe "SDL3/SDL.h SDL_LogWarn"
 foreign import capi unsafe "SDL3/SDL.h SDL_LogError"
   sdlLogError :: CInt -> CString -> CString -> IO ()
 
---- SDL3.Init ------------------------------------------------------------------
+-- SDL3.Init -------------------------------------------------------------------
 
 foreign import capi unsafe "SDL3/SDL.h SDL_Init"
   sdlInit :: SDLInitFlags -> IO CBool
 foreign import capi unsafe "SDL3/SDL.h SDL_Quit" sdlQuit :: IO ()
 foreign import capi unsafe "SDL3/SDL.h SDL_SetAppMetadataProperty"
   sdlSetAppMetadataProperty :: CString -> CString -> IO CBool
-foreign import capi unsafe "SDL3/SDL.h SDL_GetAppMetadataProperty"
-  sdlGetAppMetadataProperty :: CString -> IO (ConstPtr CChar) -- constptr cchar is ugly, but avoids error. need to use unConstPtr to get the CString
 
 --- SDL3.Video -----------------------------------------------------------------
 
@@ -83,6 +81,9 @@ foreign import capi unsafe "SDL3/SDL.h SDL_GetTextureSize"
 foreign import capi unsafe "SDL3/SDL.h SDL_RenderTexture"
   sdlRenderTexture
     :: Ptr SDLRenderer -> Ptr SDLTexture -> Ptr SDLFRect -> Ptr SDLFRect -> IO CBool
+foreign import capi unsafe "SDL3/SDL.h SDL_SetRenderDrawColor"
+  sdlSetRenderDrawColor
+    :: Ptr SDLRenderer -> Word8 -> Word8 -> Word8 -> Word8 -> IO CBool
 
 -- foreign import capi unsafe "SDL3/SDL.h SDL_CreateTextureFromSurface"
 --   sdlCreateTextureFromSurface

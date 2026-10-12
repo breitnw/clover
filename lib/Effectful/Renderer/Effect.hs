@@ -20,6 +20,7 @@ module Effectful.Renderer.Effect (
 import Effectful
 import Effectful.TH
 
+import Data.Text qualified as T
 import Effectful.Renderer.Types
 
 -- | Interface implemented by the rendering backend.
@@ -30,9 +31,17 @@ data Render a :: Effect where
   Present :: Render a m ()
   -- | Wait until the next frame.
   WaitFrame :: Render a m ()
-  -- | Load a texture from an image, returning an opaque handle to that texture.
-  LoadTexture :: Image -> Render a m (Texture a)
+  -- | Load a texture from a file path, returning an opaque handle to that texture.
+  LoadTexture
+    :: T.Text
+    -- ^ Path of the image to load.
+    -> Render a m (Texture a)
   -- | Draw a texture given a handle.
-  DrawTexture :: Texture a -> Vec2 Int -> Render a m ()
+  DrawTexture
+    :: Texture a
+    -- ^ Texture to draw.
+    -> Rect Float
+    -- ^ Destination rectangle the texture should be drawn to.
+    -> Render a m ()
 
 makeEffect ''Render

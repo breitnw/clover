@@ -1,4 +1,4 @@
-{-# LANGUAGE MagicHash #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 {- |
 Module      : Effectful.Logger.Handler.SDL
@@ -11,19 +11,18 @@ module Effectful.Logger.Handler.SDL (
   runSDLLogger,
 ) where
 
-import GHC.Ptr qualified as GHC (Ptr (..)) -- needed for CString literal
-
 import Data.Text.Foreign qualified as T
 import Effectful
 import Effectful.Dispatch.Dynamic
 
 import Effectful.Logger
 import Foreign.SDL qualified as F
+import Foreign.TH qualified as F
 
 -- TODO Make this only depend on SDL, not IOE ideally
 
 runSDLLogger :: IOE :> es => Eff (Log : es) a -> Eff es a
 runSDLLogger = interpret_ $ \case
-  LogInfo msg -> liftIO $ T.withCString msg (F.sdlLogInfo 0 (GHC.Ptr "%s"#))
-  LogWarn msg -> liftIO $ T.withCString msg (F.sdlLogWarn 0 (GHC.Ptr "%s"#))
-  LogError msg -> liftIO $ T.withCString msg (F.sdlLogError 0 (GHC.Ptr "%s"#))
+  LogInfo msg -> liftIO $ T.withCString msg (F.sdlLogInfo 0 $(F.cstring "%s"))
+  LogWarn msg -> liftIO $ T.withCString msg (F.sdlLogWarn 0 $(F.cstring "%s"))
+  LogError msg -> liftIO $ T.withCString msg (F.sdlLogError 0 $(F.cstring "%s"))
