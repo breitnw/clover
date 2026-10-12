@@ -153,10 +153,10 @@ common example-exe
     hs-source-dirs:   examples
 
     -- TODO
-    -- if flag(examples)
-    --   buildable: True
-    -- else
-    --   buildable: False
+    if flag(examples)
+      buildable: True
+    else
+      buildable: False
 
     build-depends:
       base >=4.16 && <5,
