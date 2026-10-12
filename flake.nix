@@ -11,7 +11,7 @@
   }:
     flake-utils.lib.eachDefaultSystem (system: let
       pkgs = nixpkgs.legacyPackages.${system};
-      hp = pkgs.haskell.packages.ghc96;
+      hp = pkgs.haskell.packages.ghc912;
       libmpd = hp.callCabal2nix
         "libmpd"
         (pkgs.fetchFromGitHub {
@@ -48,6 +48,7 @@
           addBuildTools = drv: pkgs.haskell.lib.addBuildTools drv [
             hp.cabal-install
             hp.haskell-language-server
+            hp.hasktags # was getting messages that this was missing??
             pkgs.pkg-config
           ];
           addExtraLibraries = drv: pkgs.haskell.lib.addExtraLibraries drv [
