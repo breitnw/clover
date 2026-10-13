@@ -13,10 +13,11 @@ SDL functions.
 module Foreign.SDL.FFI where
 
 import Foreign (FunPtr, Ptr, Word8)
-import Foreign.C (CBool (..), CChar, CFloat, CInt (..), CString)
+import Foreign.C (CBool (..), CChar, CFloat, CInt (..))
 import Foreign.C.ConstPtr (ConstPtr (..))
 
 import Foreign.SDL.Types
+import Foreign.Util
 
 -- SDL3.Log --------------------------------------------------------------------
 
@@ -29,11 +30,11 @@ import Foreign.SDL.Types
 -- The solution kinda sucks, but given a correct logging library, it's safe...
 
 foreign import capi unsafe "SDL3/SDL.h SDL_LogInfo"
-  sdlLogInfo :: CInt -> CString -> CString -> IO ()
+  sdlLogInfo :: CInt -> ConstCString -> ConstCString -> IO ()
 foreign import capi unsafe "SDL3/SDL.h SDL_LogWarn"
-  sdlLogWarn :: CInt -> CString -> CString -> IO ()
+  sdlLogWarn :: CInt -> ConstCString -> ConstCString -> IO ()
 foreign import capi unsafe "SDL3/SDL.h SDL_LogError"
-  sdlLogError :: CInt -> CString -> CString -> IO ()
+  sdlLogError :: CInt -> ConstCString -> ConstCString -> IO ()
 
 -- SDL3.Init -------------------------------------------------------------------
 
@@ -41,15 +42,15 @@ foreign import capi unsafe "SDL3/SDL.h SDL_Init"
   sdlInit :: SDLInitFlags -> IO CBool
 foreign import capi unsafe "SDL3/SDL.h SDL_Quit" sdlQuit :: IO ()
 foreign import capi unsafe "SDL3/SDL.h SDL_SetAppMetadataProperty"
-  sdlSetAppMetadataProperty :: CString -> CString -> IO CBool
+  sdlSetAppMetadataProperty :: ConstCString -> ConstCString -> IO CBool
 foreign import capi unsafe "SDL3/SDL.h SDL_GetAppMetadataProperty"
-  sdlGetAppMetadataProperty :: CString -> IO (ConstPtr CChar)
+  sdlGetAppMetadataProperty :: ConstCString -> IO (ConstCString)
 
 --- SDL3.Video -----------------------------------------------------------------
 
 foreign import capi "SDL3/SDL.h SDL_CreateWindow"
   sdlCreateWindow
-    :: CString -> CInt -> CInt -> SDLWindowFlags -> IO (Ptr SDLWindow)
+    :: ConstCString -> CInt -> CInt -> SDLWindowFlags -> IO (Ptr SDLWindow)
 foreign import capi "SDL3/SDL.h SDL_DestroyWindow"
   sdlDestroyWindow :: Ptr SDLWindow -> IO ()
 
@@ -71,7 +72,7 @@ foreign import capi unsafe "SDL3/SDL.h &SDL_DestroySurface"
 -- SDL3.Render -----------------------------------------------------------------
 
 foreign import capi "SDL3/SDL.h SDL_CreateRenderer" -- XXX Safe due to window system interaction
-  sdlCreateRenderer :: Ptr SDLWindow -> CString -> IO (Ptr SDLRenderer)
+  sdlCreateRenderer :: Ptr SDLWindow -> ConstCString -> IO (Ptr SDLRenderer)
 foreign import capi "SDL3/SDL.h SDL_DestroyRenderer" -- XXX Safe due to potential cleanup
   sdlDestroyRenderer :: Ptr SDLRenderer -> IO ()
 foreign import capi unsafe "SDL3/SDL.h SDL_RenderClear"

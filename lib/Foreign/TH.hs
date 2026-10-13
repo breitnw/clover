@@ -10,16 +10,17 @@ Stability   : unstable
 TemplateHaskell utilities for working with foreign libraries.
 -}
 module Foreign.TH (
-  cstring,
+  ccstring,
 ) where
 
+import Foreign.C.ConstPtr (ConstPtr (..))
 import GHC.Base (ord)
 import GHC.Ptr qualified as GHC
 import Language.Haskell.TH
 
--- | Utility for creating a statically allocated CString.
-cstring :: String -> Q Exp
-cstring s = do
+-- | Utility for creating a statically allocated ConstCString.
+ccstring :: String -> Q Exp
+ccstring s = do
   let toWord = fromIntegral . ord
   let bytes = map toWord s
-  return $ AppE (ConE 'GHC.Ptr) (LitE (StringPrimL bytes))
+  return $ AppE (ConE 'ConstPtr) (AppE (ConE 'GHC.Ptr) (LitE (StringPrimL bytes)))

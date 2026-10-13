@@ -13,6 +13,7 @@ module Main where
 import Control.Concurrent (threadDelay)
 import Control.Exception (bracket, bracket_)
 import Control.Monad (unless, when)
+import Data.Text qualified as T
 import Foreign (
   Bits (..),
   Ptr,
@@ -21,8 +22,8 @@ import Foreign (
   toBool,
   with,
  )
-import Foreign.C (CBool, CInt, CString, withCString)
-import Foreign.C.ConstPtr (unConstPtr)
+import Foreign.C (CBool, CInt)
+import Foreign.C.ConstPtr (ConstPtr (..))
 import System.Exit (exitFailure)
 
 import Effectful ()
@@ -30,17 +31,18 @@ import Effectful ()
 import Data.Word
 import Foreign.SDL qualified as F
 import Foreign.SDLImage qualified as F
-import Foreign.TH qualified as F
+import Foreign.TH
+import Foreign.Util
 
 -- | The type of logging functions.
-type LoggingFunc = (CInt -> CString -> CString -> IO ())
+type LoggingFunc = (CInt -> ConstCString -> ConstCString -> IO ())
 
 -- | Helper to log a message given an SDL logging function.
 --
 -- Always uses the %s format specifier, since allowing any format string is a
 -- security vulnerability.
-logMsg :: LoggingFunc -> String -> IO ()
-logMsg logFn msg = withCString msg $ logFn 0 $(F.cstring "%s")
+logMsg :: LoggingFunc -> T.Text -> IO ()
+logMsg logFn msg = withConstCString msg $ logFn 0 $(ccstring "%s")
 
 -- Resource allocators and deallocators ----------------------------------------
 
@@ -57,7 +59,7 @@ quitSDL = do
   logMsg F.sdlLogInfo "Quitting SDL"
   F.sdlQuit
 
-createWindow :: CString -> CInt -> CInt -> Word64 -> IO (Ptr F.SDLWindow)
+createWindow :: ConstCString -> CInt -> CInt -> Word64 -> IO (Ptr F.SDLWindow)
 createWindow title w h flags = do
   win <- F.sdlCreateWindow title w h flags
   when (win == nullPtr) $ do
@@ -71,7 +73,7 @@ destroyWindow win = do
   logMsg F.sdlLogInfo "Destroying window"
   F.sdlDestroyWindow win
 
-createRenderer :: Ptr F.SDLWindow -> CString -> IO (Ptr F.SDLRenderer)
+createRenderer :: Ptr F.SDLWindow -> ConstCString -> IO (Ptr F.SDLRenderer)
 createRenderer win name = do
   ren <- F.sdlCreateRenderer win name
   when (ren == nullPtr) $ do
@@ -110,28 +112,28 @@ main = do
     _ <-
       F.sdlSetAppMetadataProperty
         F.sdlPropAppMetadataNameString
-        $(F.cstring "SDL demo")
+        $(ccstring "SDL demo")
     -- Try to create the window
-    let createWindow' title w h flags = withCString title $ \title' -> createWindow title' w h flags
+    let createWindow' title w h flags = withConstCString title $ \title' -> createWindow title' w h flags
     bracket
       (createWindow' "SDL effect demo" 200 200 windowFlags)
       destroyWindow
       $ \win -> do
         -- Try to create the renderer
-        bracket (createRenderer win nullPtr) destroyRenderer $ \ren -> do
+        bracket (createRenderer win (ConstPtr nullPtr)) destroyRenderer $ \ren -> do
           -- Finally, the fun part!
           runApp ren
           logMsg F.sdlLogInfo "Done acquiring resources"
 
     -- verify that the metadata name got set properly
     name <- F.sdlGetAppMetadataProperty F.sdlPropAppMetadataNameString
-    F.sdlLogInfo 0 $(F.cstring "%s finished running") (unConstPtr name)
+    F.sdlLogInfo 0 $(ccstring "%s finished running") name
 
 runApp :: Ptr F.SDLRenderer -> IO ()
 runApp ren = do
   _ <- F.sdlRenderClear ren
 
-  tex <- F.imgLoadTexture ren $(F.cstring "data/image1.jpg")
+  tex <- F.imgLoadTexture ren $(ccstring "data/image1.jpg")
   when (tex == nullPtr) $ do
     logMsg F.sdlLogError "Failed to load texture"
     exitFailure

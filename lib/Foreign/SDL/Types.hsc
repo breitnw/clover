@@ -16,9 +16,10 @@ Supporting types (and patterns) for SDL FFI.
 module Foreign.SDL.Types where
 
 import Foreign (Word32, Word64, Storable(..))
-import Foreign.C (CFloat, CString)
+import Foreign.C (CFloat)
 
 import Foreign.TH
+import Foreign.Util (ConstCString)
 
 #include <SDL3/SDL.h>
 
@@ -43,13 +44,13 @@ pattern SDL_INIT_CAMERA   = (#const SDL_INIT_CAMERA)   :: SDLInitFlags
 -- NOTE we can't actually have address literals in patterns, or else GHC blows
 -- up. So, these are just top level definitions
 
-sdlPropAppMetadataNameString       = $(cstring #const_str SDL_PROP_APP_METADATA_NAME_STRING)       :: CString
-sdlPropAppMetadataVersionString    = $(cstring #const_str SDL_PROP_APP_METADATA_VERSION_STRING)    :: CString
-sdlPropAppMetadataIdentifierString = $(cstring #const_str SDL_PROP_APP_METADATA_IDENTIFIER_STRING) :: CString
-sdlPropAppMetadataCreatorString    = $(cstring #const_str SDL_PROP_APP_METADATA_CREATOR_STRING)    :: CString
-sdlPropAppMetadataCopyrightString  = $(cstring #const_str SDL_PROP_APP_METADATA_COPYRIGHT_STRING)  :: CString
-sdlPropAppMetadataUrlString        = $(cstring #const_str SDL_PROP_APP_METADATA_URL_STRING)        :: CString
-sdlPropAppMetadataTypeString       = $(cstring #const_str SDL_PROP_APP_METADATA_TYPE_STRING)       :: CString
+sdlPropAppMetadataNameString       = $(ccstring #const_str SDL_PROP_APP_METADATA_NAME_STRING)       :: ConstCString
+sdlPropAppMetadataVersionString    = $(ccstring #const_str SDL_PROP_APP_METADATA_VERSION_STRING)    :: ConstCString
+sdlPropAppMetadataIdentifierString = $(ccstring #const_str SDL_PROP_APP_METADATA_IDENTIFIER_STRING) :: ConstCString
+sdlPropAppMetadataCreatorString    = $(ccstring #const_str SDL_PROP_APP_METADATA_CREATOR_STRING)    :: ConstCString
+sdlPropAppMetadataCopyrightString  = $(ccstring #const_str SDL_PROP_APP_METADATA_COPYRIGHT_STRING)  :: ConstCString
+sdlPropAppMetadataUrlString        = $(ccstring #const_str SDL_PROP_APP_METADATA_URL_STRING)        :: ConstCString
+sdlPropAppMetadataTypeString       = $(ccstring #const_str SDL_PROP_APP_METADATA_TYPE_STRING)       :: ConstCString
 
 
 -- SDL3.Video ------------------------------------------------------------------

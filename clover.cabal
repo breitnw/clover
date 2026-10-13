@@ -84,6 +84,7 @@ library
       -- Utils
       Util,
       Foreign.TH,
+      Foreign.Util,
 
       -- Effects
       -- Effectful.MusicPlayer,
@@ -162,15 +163,12 @@ common example-exe
     build-depends:
       base >=4.16 && <5,
       effectful ^>=2.6.1,
+      text,
       clover
 
 executable logger
     import:  example-exe
     main-is: Logger.hs
-
-executable fail
-    import:  example-exe
-    main-is: Fail.hs
 
 executable renderer
     import:  example-exe

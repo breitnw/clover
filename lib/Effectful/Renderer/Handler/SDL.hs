@@ -23,11 +23,11 @@ import Foreign (
   toBool,
   withForeignPtr,
  )
-import Foreign.C (CFloat (..), withCString)
+import Foreign.C (CFloat (..))
+import Foreign.C.ConstPtr (ConstPtr (..))
 import Foreign.Marshal (with)
 
 import Data.Text qualified as T
-import Data.Text.Foreign qualified as T
 import Effectful
 import Effectful.Concurrent
 import Effectful.Dispatch.Dynamic
@@ -39,6 +39,7 @@ import Effectful.Renderer.Effect
 import Effectful.Renderer.Types
 import Foreign.SDL qualified as F
 import Foreign.SDLImage qualified as F
+import Foreign.Util
 
 -- TODO it would be nice to use ForeignPtr in this module to take advantage of
 -- GC for textures, surfaces, etc
@@ -122,7 +123,7 @@ runSDLRenderer (Vec2 width height) title meta = reinterpret_ runSDL $ \case
       let flags = F.SDL_WINDOW_TRANSPARENT .|. F.SDL_WINDOW_BORDERLESS
       win <-
         liftIO
-          ( T.withCString title $ \title' ->
+          ( withConstCString title $ \title' ->
               F.sdlCreateWindow title' (fromIntegral width) (fromIntegral height) flags
           )
       if win == nullPtr
@@ -137,7 +138,7 @@ runSDLRenderer (Vec2 width height) title meta = reinterpret_ runSDL $ \case
     -- Open the SDL renderer.
     openRenderer win = do
       logInfo "Initializing SDL renderer"
-      ren <- liftIO (F.sdlCreateRenderer win nullPtr)
+      ren <- liftIO (F.sdlCreateRenderer win (ConstPtr nullPtr))
       if ren == nullPtr
         then throwIO $ SDLException "Failed to initialize renderer"
         else return ren
@@ -160,7 +161,7 @@ setMetadata meta = do
         , (smType, F.sdlPropAppMetadataTypeString)
         ]
   forM_ metadataProps $ \(field, prop) ->
-    T.withCString (field meta) $ F.sdlSetAppMetadataProperty prop
+    withConstCString (field meta) $ F.sdlSetAppMetadataProperty prop
 
 clear'
   :: ( Reader SDLContext :> es
@@ -190,7 +191,7 @@ present' = do
   result <- liftIO $ F.sdlRenderPresent ren
   unless (toBool result) $ logWarn "SDL failed to present frame"
 
--- TODO verify that the ForeignPtr setup works properly
+-- TODO verify that the ForeignPtr setup works properly, texture gets freed
 loadTexture'
   :: ( Reader SDLContext :> es
      , Log :> es
@@ -204,7 +205,7 @@ loadTexture' path = do
   logInfo $ "Creating texture: " <> path
   -- NOTE will this break on windows where the character encoding is different?
   -- might need to use OsPath
-  tex <- liftIO $ T.withCString path $ \path' -> F.imgLoadTexture ren path'
+  tex <- liftIO $ withConstCString path $ \path' -> F.imgLoadTexture ren path'
   foreignTex <- liftIO $ newForeignPtr F.sdlDestroyTexture' tex
   return $ Texture path foreignTex
 
