@@ -19,7 +19,7 @@ import Foreign (Word32, Word64, Storable(..))
 import Foreign.C (CFloat)
 
 import Foreign.TH
-import Foreign.Util (ConstCString)
+import Foreign.Util
 
 #include <SDL3/SDL.h>
 

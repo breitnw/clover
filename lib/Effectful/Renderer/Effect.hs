@@ -14,14 +14,15 @@ module Effectful.Renderer.Effect (
   waitFrame,
   present,
   loadTexture,
+  destroyTexture,
   drawTexture,
 ) where
 
 import Effectful
 import Effectful.TH
 
-import Data.Text qualified as T
 import Effectful.Renderer.Types
+import Util
 
 -- | Interface implemented by the rendering backend.
 data Render a :: Effect where
@@ -33,9 +34,13 @@ data Render a :: Effect where
   WaitFrame :: Render a m ()
   -- | Load a texture from a file path, returning an opaque handle to that texture.
   LoadTexture
-    :: T.Text
+    :: Path
     -- ^ Path of the image to load.
     -> Render a m (Texture a)
+  DestroyTexture
+    :: Texture a
+    -- ^ Texture to destroy.
+    -> Render a m ()
   -- | Draw a texture given a handle.
   DrawTexture
     :: Texture a

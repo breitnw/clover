@@ -15,6 +15,7 @@ import Foreign.C.ConstPtr (ConstPtr (..))
 import Data.Text qualified as T
 import Data.Text.Foreign qualified as T
 
+-- | The 'const char*' type in C.
 type ConstCString = ConstPtr CChar
 
 -- | Like `Data.Text.Foreign.withCString`, but gives a `ConstCString`.

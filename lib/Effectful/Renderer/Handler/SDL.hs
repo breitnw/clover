@@ -40,19 +40,19 @@ import Effectful.Renderer.Types
 import Foreign.SDL qualified as F
 import Foreign.SDLImage qualified as F
 import Foreign.Util
-
--- TODO it would be nice to use ForeignPtr in this module to take advantage of
--- GC for textures, surfaces, etc
--- Monad can still handle freeing window/renderer
+import Util
 
 -- EFFECT HANDLER --------------------------------------------------------------
 
 -- | An empty type representing the SDL render backend.
 data SDL
 
+-- | Printable metadata for a texture.
+newtype TextureMeta = TextureMeta T.Text
+
 -- | A SDL texture comes with a name and data
 -- NOTE designated metadata type
-data instance Texture SDL = Texture T.Text (ForeignPtr F.SDLTexture)
+data instance Texture SDL = Texture TextureMeta (Ptr F.SDLTexture)
 
 -- | The resources available when inside a SDL window context.
 data SDLContext = SDLContext
@@ -94,6 +94,7 @@ runSDLRenderer (Vec2 width height) title meta = reinterpret_ runSDL $ \case
   WaitFrame -> waitFrame'
   Present -> present'
   LoadTexture path -> loadTexture' path
+  DestroyTexture tex -> destroyTexture' tex
   DrawTexture tex dst -> drawTexture' tex dst
   where
     runSDL
@@ -191,37 +192,38 @@ present' = do
   result <- liftIO $ F.sdlRenderPresent ren
   unless (toBool result) $ logWarn "SDL failed to present frame"
 
--- TODO verify that the ForeignPtr setup works properly, texture gets freed
 loadTexture'
   :: ( Reader SDLContext :> es
      , Log :> es
      , IOE :> es
      )
-  => T.Text
+  => Path
   -> Eff es (Texture SDL)
-loadTexture' path = do
-  -- TODO store the texture to free before closing renderer?
+loadTexture' (Path pathText) = do
   ren <- asks scRenderer
-  logInfo $ "Creating texture: " <> path
+  logInfo $ "Creating texture: " <> pathText
   -- NOTE will this break on windows where the character encoding is different?
   -- might need to use OsPath
-  tex <- liftIO $ withConstCString path $ \path' -> F.imgLoadTexture ren path'
-  foreignTex <- liftIO $ newForeignPtr F.sdlDestroyTexture' tex
-  return $ Texture path foreignTex
+  tex <- liftIO $ withConstCString pathText $ F.imgLoadTexture ren
+  return $ Texture (TextureMeta pathText) tex
+
+destroyTexture' :: (Log :> es, IOE :> es) => Texture SDL -> Eff es ()
+destroyTexture' (Texture (TextureMeta meta) tex) = do
+  logInfo $ "Destroying texture texture: " <> meta
+  liftIO $ F.sdlDestroyTexture tex
 
 drawTexture'
   :: (Reader SDLContext :> es, Log :> es, IOE :> es)
   => Texture SDL
   -> Rect Float
   -> Eff es ()
-drawTexture' (Texture meta tex) (Rect x y w h) = do
+drawTexture' (Texture (TextureMeta meta) tex) (Rect x y w h) = do
   ren <- asks scRenderer
   result <-
     liftIO $
-      withForeignPtr tex $ \texPtr ->
-        with
-          (F.SDLFRect (CFloat x) (CFloat y) (CFloat w) (CFloat h))
-          (F.sdlRenderTexture ren texPtr nullPtr)
+      with
+        (F.SDLFRect (CFloat x) (CFloat y) (CFloat w) (CFloat h))
+        (F.sdlRenderTexture ren tex nullPtr)
   unless (toBool result) $
     logWarn $
       "SDL failed to render texture" <> meta

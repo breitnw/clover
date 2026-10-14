@@ -8,9 +8,15 @@ Stability   : unstable
 Utilities for common patterns.
 -}
 module Util (
+  Path (..),
   orElseDo,
   rightToMaybe,
 ) where
+
+import Data.Text qualified as T
+
+-- TODO find a better place for this?
+newtype Path = Path T.Text
 
 -- TODO error constraints on GADT constructors instead of handler signatures?
 

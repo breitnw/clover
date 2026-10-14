@@ -16,6 +16,7 @@ import Effectful.Concurrent
 import Effectful.Logger.Handler.SDL
 import Effectful.Renderer
 import Effectful.Renderer.Handler.SDL
+import Util
 
 main :: IO ()
 main =
@@ -40,8 +41,8 @@ app
    . Render a :> es
   => Eff es ()
 app = do
-  tex <- loadTexture @a "data/image3.jpg"
-  loop tex (Rect 0 0 30 30)
+  withTexture @a (Path "data/image3.jpg") $ \tex ->
+    loop tex (Rect 0 0 30 30)
 
 loop
   :: forall a es

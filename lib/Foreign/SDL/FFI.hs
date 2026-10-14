@@ -13,11 +13,15 @@ SDL functions.
 module Foreign.SDL.FFI where
 
 import Foreign (FunPtr, Ptr, Word8)
-import Foreign.C (CBool (..), CChar, CFloat, CInt (..))
+import Foreign.C (CBool (..), CFloat, CInt (..))
 import Foreign.C.ConstPtr (ConstPtr (..))
 
 import Foreign.SDL.Types
 import Foreign.Util
+
+-- TODO REMOVE
+foreign import ccall unsafe "&free_texture"
+  freeTexture :: FunPtr (Ptr SDLTexture -> IO ())
 
 -- SDL3.Log --------------------------------------------------------------------
 
@@ -44,7 +48,7 @@ foreign import capi unsafe "SDL3/SDL.h SDL_Quit" sdlQuit :: IO ()
 foreign import capi unsafe "SDL3/SDL.h SDL_SetAppMetadataProperty"
   sdlSetAppMetadataProperty :: ConstCString -> ConstCString -> IO CBool
 foreign import capi unsafe "SDL3/SDL.h SDL_GetAppMetadataProperty"
-  sdlGetAppMetadataProperty :: ConstCString -> IO (ConstCString)
+  sdlGetAppMetadataProperty :: ConstCString -> IO ConstCString
 
 --- SDL3.Video -----------------------------------------------------------------
 
@@ -62,12 +66,8 @@ foreign import capi "SDL3/SDL.h SDL_DestroyWindow"
 -- foreign import capi unsafe "SDL3/SDL.h SDL_CreateSurfaceFrom"
 --   sdlCreateSurfaceFrom
 --     :: CInt -> CInt -> SDLPixelFormat -> Ptr () -> CInt -> IO (Ptr SDLSurface)
--- foreign import capi unsafe "SDL3/SDL.h SDL_DestroySurface"
---   sdlDestroySurface :: Ptr SDLSurface -> IO ()
-
--- for FinalizerPtr
-foreign import capi unsafe "SDL3/SDL.h &SDL_DestroySurface"
-  sdlDestroySurface' :: FunPtr (Ptr SDLSurface -> IO ())
+foreign import capi unsafe "SDL3/SDL.h SDL_DestroySurface"
+  sdlDestroySurface :: Ptr SDLSurface -> IO ()
 
 -- SDL3.Render -----------------------------------------------------------------
 
@@ -93,7 +93,3 @@ foreign import capi unsafe "SDL3/SDL.h SDL_SetRenderDrawColor"
 --     :: Ptr SDLRenderer -> Ptr SDLSurface -> IO (Ptr SDLTexture)
 foreign import capi unsafe "SDL3/SDL.h SDL_DestroyTexture"
   sdlDestroyTexture :: Ptr SDLTexture -> IO ()
-
--- for FinalizerPtr
-foreign import capi unsafe "SDL3/SDL.h &SDL_DestroyTexture"
-  sdlDestroyTexture' :: FunPtr (Ptr SDLTexture -> IO ())

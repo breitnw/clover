@@ -70,7 +70,6 @@ library
       sdl3-image >=3.3.0
 
     build-depends: 
-      th-abstraction,
       base              >=4.16 && <5,
       effectful        ^>=2.6.1,
       effectful-th     ^>=1.0.0.4,
@@ -109,6 +108,7 @@ library
 
       Effectful.Renderer.Effect,
       Effectful.Renderer.Types,
+      Effectful.Renderer.Managed,
 
       -- FFIs
       Foreign.SDL.Types,
