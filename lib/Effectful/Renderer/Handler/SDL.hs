@@ -14,15 +14,7 @@ module Effectful.Renderer.Handler.SDL (
 ) where
 
 import Control.Monad (forM_, unless)
-import Foreign (
-  Bits ((.|.)),
-  ForeignPtr,
-  Ptr,
-  newForeignPtr,
-  nullPtr,
-  toBool,
-  withForeignPtr,
- )
+import Foreign (Bits ((.|.)), Ptr, nullPtr, toBool)
 import Foreign.C (CFloat (..))
 import Foreign.C.ConstPtr (ConstPtr (..))
 import Foreign.Marshal (with)
@@ -209,7 +201,7 @@ loadTexture' (Path pathText) = do
 
 destroyTexture' :: (Log :> es, IOE :> es) => Texture SDL -> Eff es ()
 destroyTexture' (Texture (TextureMeta meta) tex) = do
-  logInfo $ "Destroying texture texture: " <> meta
+  logInfo $ "Destroying texture: " <> meta
   liftIO $ F.sdlDestroyTexture tex
 
 drawTexture'

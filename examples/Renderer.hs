@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 {- |
@@ -36,22 +37,31 @@ main =
         . runSDLRenderer (Vec2 100 100) "renderer demo" meta
         $ app @SDL
 
+-- A layout is a list of texture-like things and their corresponding rects
+newtype Layout a = Layout [(a, Rect Float)]
+  deriving (Functor, Foldable, Traversable)
+
 app
   :: forall a es
    . Render a :> es
   => Eff es ()
 app = do
-  withTexture @a (Path "data/image3.jpg") $ \tex ->
-    loop tex (Rect 0 0 30 30)
+  let layout =
+        Layout
+          [ (Path "data/image1.jpg", Rect 0 0 20 20)
+          , (Path "data/image2.jpg", Rect 30 0 20 20)
+          , (Path "data/image3.jpg", Rect 0 30 30 20)
+          ]
+  -- withTextures is so sexy
+  withTextures @a loadTexture layout loop
 
 loop
   :: forall a es
    . Render a :> es
-  => Texture a
-  -> Rect Float
+  => Layout (Texture a)
   -> Eff es ()
-loop tex rect@(Rect x y w h) = do
-  drawTexture @a tex rect
+loop layout@(Layout l) = do
+  mapM_ (uncurry (drawTexture @a)) l
   present @a
   waitFrame @a
-  loop tex (Rect x y (w + 1) h)
+  loop layout
