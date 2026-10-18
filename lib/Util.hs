@@ -17,6 +17,7 @@ import Data.Text qualified as T
 
 -- TODO find a better place for this?
 newtype Path = Path T.Text
+  deriving (Eq, Show)
 
 -- TODO error constraints on GADT constructors instead of handler signatures?
 
