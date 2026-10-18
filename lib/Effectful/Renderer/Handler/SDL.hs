@@ -13,7 +13,7 @@ module Effectful.Renderer.Handler.SDL (
   runSDLRenderer,
 ) where
 
-import Control.Monad (forM_, unless)
+import Control.Monad (forM_, unless, when)
 import Foreign (Bits ((.|.)), Ptr, nullPtr, toBool)
 import Foreign.C (CFloat (..))
 import Foreign.C.ConstPtr (ConstPtr (..))
@@ -197,6 +197,10 @@ loadTexture' (Path pathText) = do
   -- NOTE will this break on windows where the character encoding is different?
   -- might need to use OsPath
   tex <- liftIO $ withConstCString pathText $ F.imgLoadTexture ren
+  -- Make sure the texture was loaded properly
+  when (tex == nullPtr) $
+    throwIO $
+      SDLException "Failed to initialize renderer"
   return $ Texture (TextureMeta pathText) tex
 
 destroyTexture' :: (Log :> es, IOE :> es) => Texture SDL -> Eff es ()
