@@ -30,37 +30,36 @@ withTexture
   -> (Texture a -> Eff es b)
   -- ^ Operation to run with the texture in scope
   -> Eff es b
-withTexture doLoadTexture = bracket doLoadTexture (destroyTexture @a)
+withTexture loadOp = bracket loadOp (destroyTexture @a)
 
 -- TODO ensure the proper behavior when one crashes
 
--- | Traverse any structure of items that can be loaded as textures (e.g.,
--- paths), and enter a context with an analogous structure full of textures.
+-- | Traverse any structure of operations denoting texture loads, and enter a
+-- context with an analogous structure full of textures.
 withTextures
-  :: forall a es b c t
+  :: forall a es b t
    . (Traversable t, Render a :> es)
-  => (b -> Eff es (Texture a))
-  -- ^ Function to create a texture based on an item in the structure
-  -> t b
-  -- ^ Structure to map over
-  -> (t (Texture a) -> Eff es c)
+  => t (Eff es (Texture a))
+  -- ^ Structure of load operations to map over
+  -> (t (Texture a) -> Eff es b)
   -- ^ Operation to run with the textures in scope
-  -> Eff es c
-withTextures mkTexture items op =
+  -> Eff es b
+withTextures loadOps body =
   -- Unfortunately, this is not as simple as using bracket! if texture
   -- allocation fails, we want to also free all textures allocated thus far.
   -- So, the only choice is to stick them in a store as we allocate them, and
   -- free the whole store at the end.
   evalState [] $
-    (traverse mkTexture' items >>= raise . op)
+    (traverse doAndStore loadOps >>= raise . body)
       `finally` cleanup
   where
-    -- setup: create a texture and add it to the store
-    mkTexture' :: b -> Eff (State [Texture a] : es) (Texture a)
-    mkTexture' val = do
-      tex <- raise $ mkTexture val
+    -- setup: do an action and add its result to the store
+    doAndStore :: Eff es c -> Eff (State [c] : es) c
+    doAndStore loadOp = do
+      tex <- raise loadOp
       modify (tex :)
       return tex
+
     -- cleanup: free all textures in the store
     cleanup :: Eff (State [Texture a] : es) ()
     cleanup = get @[Texture a] >>= mapM_ destroyTexture

@@ -48,20 +48,20 @@ app
 app = do
   let layout =
         Layout
-          [ (Path "data/image1.jpg", Rect 0 0 20 20)
-          , (Path "data/image2.jpg", Rect 30 0 20 20)
-          , (Path "data/image3.jpg", Rect 0 30 30 20)
+          [ (Path "data/image1.jpg", Rect 0 0 50 50)
+          , (Path "data/image2.jpg", Rect 40 0 50 50)
+          , (Path "data/image3.jpg", Rect 20 30 50 50)
           ]
   -- withTextures is so sexy
-  withTextures @a loadTexture layout loop
+  withTextures @a (fmap loadTexture layout) loop
 
 loop
   :: forall a es
    . Render a :> es
   => Layout (Texture a)
   -> Eff es ()
-loop layout@(Layout l) = do
+loop (Layout l) = do
   mapM_ (uncurry (drawTexture @a)) l
   present @a
   waitFrame @a
-  loop layout
+  loop (Layout (tail l ++ [head l]))
