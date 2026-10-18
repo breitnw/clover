@@ -1,4 +1,4 @@
-![clover](https://codeberg.org/breitnw/clover/raw/commit/4e2877d322f66d23d3c730993c848973a399f0a9/data/clover.png)
+![clover](https://codeberg.org/breitnw/clover/raw/branch/main/data/clover.png)
 
 <img alt="human made" src="https://emacsair.me/assets/badges/human.svg"/> <img alt="license" src="https://img.shields.io/github/license/breitnw/clover">
 
