@@ -32,8 +32,6 @@ withTexture
   -> Eff es b
 withTexture loadOp = bracket loadOp (destroyTexture @a)
 
--- TODO ensure the proper behavior when one crashes
-
 -- | Traverse any structure of operations denoting texture loads, and enter a
 -- context with an analogous structure full of textures.
 withTextures
