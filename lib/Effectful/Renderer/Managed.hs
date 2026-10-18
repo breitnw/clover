@@ -48,16 +48,15 @@ withTextures loadOps body =
   -- So, the only choice is to stick them in a store as we allocate them, and
   -- free the whole store at the end.
   evalState [] $
-    (traverse doAndStore loadOps >>= raise . body)
-      `finally` cleanup
+    (traverse doAndStoreFinalizer loadOps >>= raise . body)
+      `finally` (get @[Eff es ()] >>= raise . sequence)
   where
-    -- setup: do an action and add its result to the store
-    doAndStore :: Eff es c -> Eff (State [c] : es) c
-    doAndStore loadOp = do
+    -- perform an action that creates a texture, and add the finalizer for that
+    -- texture to the store
+    doAndStoreFinalizer
+      :: Eff es (Texture a)
+      -> Eff (State [Eff es ()] : es) (Texture a)
+    doAndStoreFinalizer loadOp = do
       tex <- raise loadOp
-      modify (tex :)
+      modify @[Eff es ()] (destroyTexture tex :)
       return tex
-
-    -- cleanup: free all textures in the store
-    cleanup :: Eff (State [Texture a] : es) ()
-    cleanup = get @[Texture a] >>= mapM_ destroyTexture
