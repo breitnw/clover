@@ -2,7 +2,7 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 
 {- |
-Module      : Foreign.SDL.FFI
+Module      : Foreign.Lib.SDL.FFI
 Copyright   : (c) Nick Breitling 2026
 License     : GPL v3 (see LICENSE)
 Maintainer  : Nick Breitling <breitling.nw@gmail.com>
@@ -10,13 +10,13 @@ Stability   : unstable
 
 SDL functions.
 -}
-module Foreign.SDL.FFI where
+module Foreign.Lib.SDL.FFI where
 
 import Foreign (Ptr, Word8)
 import Foreign.C (CBool (..), CFloat, CInt (..), CSize (..))
 import Foreign.C.ConstPtr (ConstPtr (..))
 
-import Foreign.SDL.Types
+import Foreign.Lib.SDL.Types
 import Foreign.Util
 
 -- SDL3.Log --------------------------------------------------------------------

@@ -96,13 +96,13 @@ library
       Effectful.Renderer.Handler.SDL,
 
       -- FFIs
-      Foreign.SDL,
-      Foreign.SDLImage,
+      Foreign.Lib.SDL,
+      Foreign.Lib.SDLImage,
 
     other-modules:    
       -- Effects
-      -- Effectful.MusicPlayer.Effect,
-      -- Effectful.MusicPlayer.Types,
+      -- Effectful.MusicPlayer.Conc.Effect,
+      Effectful.MusicPlayer.Types,
 
       Effectful.Logger.Effect,
 
@@ -111,8 +111,8 @@ library
       Effectful.Renderer.Managed,
 
       -- FFIs
-      Foreign.SDL.Types,
-      Foreign.SDL.FFI,
+      Foreign.Lib.SDL.Types,
+      Foreign.Lib.SDL.FFI,
 
 
 -- main executable -------------------------------------------------------------

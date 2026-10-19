@@ -30,8 +30,8 @@ import Effectful.Reader.Static
 import Effectful.Logger
 import Effectful.Renderer.Effect
 import Effectful.Renderer.Types
-import Foreign.SDL qualified as F
-import Foreign.SDLImage qualified as F
+import Foreign.Lib.SDL qualified as F
+import Foreign.Lib.SDLImage qualified as F
 import Foreign.Util
 import Util
 

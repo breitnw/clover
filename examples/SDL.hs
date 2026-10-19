@@ -29,8 +29,8 @@ import System.Exit (exitFailure)
 import Effectful ()
 
 import Data.Word
-import Foreign.SDL qualified as F
-import Foreign.SDLImage qualified as F
+import Foreign.Lib.SDL qualified as F
+import Foreign.Lib.SDLImage qualified as F
 import Foreign.TH
 import Foreign.Util
 

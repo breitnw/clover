@@ -15,7 +15,7 @@ import Effectful
 import Effectful.Dispatch.Dynamic
 
 import Effectful.Logger
-import Foreign.SDL qualified as F
+import Foreign.Lib.SDL qualified as F
 import Foreign.TH
 import Foreign.Util
 

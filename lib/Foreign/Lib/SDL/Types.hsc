@@ -4,7 +4,7 @@
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
 
 {- |
-Module      : Foreign.SDL.Types
+Module      : Foreign.Lib.SDL.Types
 Copyright   : (c) Nick Breitling 2026
 License     : GPL v3 (see LICENSE)
 Maintainer  : Nick Breitling <breitling.nw@gmail.com>
@@ -13,7 +13,7 @@ Stability   : unstable
 Supporting types (and patterns) for SDL FFI.
 -}
 
-module Foreign.SDL.Types where
+module Foreign.Lib.SDL.Types where
 
 import Foreign (Word32, Word64, Storable(..))
 import Foreign.C (CFloat)
