@@ -1,6 +1,6 @@
 ![clover](https://codeberg.org/breitnw/clover/raw/branch/main/data/clover.png)
 
-![human-made](https://img.shields.io/badge/human--made-3e9e00) ![license](https://img.shields.io/github/license/breitnw/clover)
+![human-made software](https://img.shields.io/badge/human--made_software-3e9e00) ![license](https://img.shields.io/github/license/breitnw/clover)
 
 A massively customizable graphical MPD client for music collectors and visualization lovers
 
