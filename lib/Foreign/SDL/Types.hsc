@@ -176,3 +176,7 @@ instance Storable SDLFRect where
     #{poke SDL_FRect, y} ptr y
     #{poke SDL_FRect, w} ptr w
     #{poke SDL_FRect, h} ptr h
+
+-- SDL3.IOStream ---------------------------------------------------------------
+
+data SDLIOStream

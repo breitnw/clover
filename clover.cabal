@@ -163,6 +163,7 @@ common example-exe
     build-depends:
       base >=4.16 && <5,
       effectful ^>=2.6.1,
+      bytestring,
       text,
       clover
 

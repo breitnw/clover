@@ -13,11 +13,13 @@ module Effectful.Renderer.Effect (
   clear,
   waitFrame,
   present,
-  loadTexture,
+  loadTextureFile,
+  loadTextureBytes,
   destroyTexture,
   drawTexture,
 ) where
 
+import Data.ByteString qualified as BS
 import Effectful
 import Effectful.TH
 
@@ -33,9 +35,14 @@ data Render a :: Effect where
   -- | Wait until the next frame.
   WaitFrame :: Render a m ()
   -- | Load a texture from a file path, returning an opaque handle to that texture.
-  LoadTexture
+  LoadTextureFile
     :: Path
     -- ^ Path of the image to load.
+    -> Render a m (Texture a)
+  -- | Load a texture from a ByteString, returning an opaque handle to that texture.
+  LoadTextureBytes
+    :: BS.ByteString
+    -- ^ Contents of the image to load.
     -> Render a m (Texture a)
   DestroyTexture
     :: Texture a

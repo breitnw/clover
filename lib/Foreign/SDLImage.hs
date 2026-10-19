@@ -13,6 +13,7 @@ Raw FFI for SDL_image.
 module Foreign.SDLImage where
 
 import Foreign (Ptr)
+import Foreign.C (CBool (..))
 import Foreign.C.ConstPtr (ConstPtr (..))
 
 import Foreign.SDL.Types
@@ -20,5 +21,10 @@ import Foreign.Util
 
 foreign import capi unsafe "SDL3_image/SDL_image.h IMG_Load"
   imgLoad :: ConstCString -> IO (Ptr SDLSurface)
+foreign import capi unsafe "SDL3_image/SDL_image.h IMG_Load_IO"
+  imgLoadIO :: Ptr SDLIOStream -> CBool -> IO (Ptr SDLSurface)
 foreign import capi unsafe "SDL3_image/SDL_image.h IMG_LoadTexture"
   imgLoadTexture :: Ptr SDLRenderer -> ConstCString -> IO (Ptr SDLTexture)
+foreign import capi unsafe "SDL3_image/SDL_image.h IMG_LoadTexture_IO"
+  imgLoadTextureIO
+    :: Ptr SDLRenderer -> Ptr SDLIOStream -> CBool -> IO (Ptr SDLTexture)

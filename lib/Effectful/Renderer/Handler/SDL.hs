@@ -14,11 +14,12 @@ module Effectful.Renderer.Handler.SDL (
 ) where
 
 import Control.Monad (forM_, unless, when)
-import Foreign (Bits ((.|.)), Ptr, nullPtr, toBool)
+import Foreign (Bits ((.|.)), Ptr, castPtr, nullPtr, toBool, with)
 import Foreign.C (CFloat (..))
 import Foreign.C.ConstPtr (ConstPtr (..))
-import Foreign.Marshal (with)
+import Foreign.Marshal (fromBool)
 
+import Data.ByteString qualified as BS
 import Data.Text qualified as T
 import Effectful
 import Effectful.Concurrent
@@ -85,7 +86,8 @@ runSDLRenderer (Vec2 width height) title meta = reinterpret_ runSDL $ \case
   Clear -> clear'
   WaitFrame -> waitFrame'
   Present -> present'
-  LoadTexture path -> loadTexture' path
+  LoadTextureFile path -> loadTextureFile' path
+  LoadTextureBytes bytes -> loadTextureBytes' bytes
   DestroyTexture tex -> destroyTexture' tex
   DrawTexture tex dst -> drawTexture' tex dst
   where
@@ -114,11 +116,12 @@ runSDLRenderer (Vec2 width height) title meta = reinterpret_ runSDL $ \case
     openWindow = do
       logInfo "Initializing SDL window"
       let flags = F.SDL_WINDOW_TRANSPARENT .|. F.SDL_WINDOW_BORDERLESS
-      win <-
-        liftIO
-          ( withConstCString title $ \title' ->
-              F.sdlCreateWindow title' (fromIntegral width) (fromIntegral height) flags
-          )
+      win <- liftIO $ withConstCString title $ \title' ->
+        F.sdlCreateWindow
+          title'
+          (fromIntegral width)
+          (fromIntegral height)
+          flags
       if win == nullPtr
         then throwIO $ SDLException "Failed to initialize window"
         else return win
@@ -184,14 +187,14 @@ present' = do
   result <- liftIO $ F.sdlRenderPresent ren
   unless (toBool result) $ logWarn "SDL failed to present frame"
 
-loadTexture'
+loadTextureFile'
   :: ( Reader SDLContext :> es
      , Log :> es
      , IOE :> es
      )
   => Path
   -> Eff es (Texture SDL)
-loadTexture' (Path pathText) = do
+loadTextureFile' (Path pathText) = do
   ren <- asks scRenderer
   logInfo $ "Creating texture: " <> pathText
   -- NOTE will this break on windows where the character encoding is different?
@@ -202,6 +205,29 @@ loadTexture' (Path pathText) = do
     throwIO $
       SDLException "Failed to initialize renderer"
   return $ Texture (TextureMeta pathText) tex
+
+loadTextureBytes'
+  :: ( Reader SDLContext :> es
+     , Log :> es
+     , IOE :> es
+     )
+  => BS.ByteString
+  -> Eff es (Texture SDL)
+loadTextureBytes' bytes = do
+  let name = "<bytes>"
+  ren <- asks scRenderer
+  logInfo $ "Creating texture: " <> name
+  tex <- liftIO $ BS.useAsCStringLen bytes $ \(cstring, len) -> do
+    -- castptr is sus
+    ioStream <- F.sdlIOFromMem (castPtr cstring) (fromIntegral len)
+    if ioStream == nullPtr
+      then return nullPtr -- kinda yucky, but whatever
+      else F.imgLoadTextureIO ren ioStream (fromBool True)
+  -- Make sure the texture was loaded properly
+  when (tex == nullPtr) $
+    throwIO $
+      SDLException "Failed to initialize renderer"
+  return $ Texture (TextureMeta name) tex
 
 destroyTexture' :: (Log :> es, IOE :> es) => Texture SDL -> Eff es ()
 destroyTexture' (Texture (TextureMeta meta) tex) = do

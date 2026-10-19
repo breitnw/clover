@@ -11,6 +11,7 @@ Stability   : unstable
 -}
 module Main where
 
+import Data.ByteString qualified as BS
 import Effectful
 import Effectful.Concurrent
 
@@ -43,17 +44,19 @@ newtype Layout a = Layout [(a, Rect Float)]
 
 app
   :: forall a es
-   . Render a :> es
+   . (IOE :> es, Render a :> es)
   => Eff es ()
 app = do
+  bytes <- liftIO $ BS.readFile "data/image3.jpg"
+
   let layout =
         Layout
-          [ (Path "data/image1.jpg", Rect 0 0 50 50)
-          , (Path "data/image2.jpg", Rect 40 0 50 50)
-          , (Path "data/image3.jpg", Rect 20 30 50 50)
+          [ (loadTextureFile $ Path "data/image1.jpg", Rect 0 0 50 50)
+          , (loadTextureFile $ Path "data/image2.jpg", Rect 40 0 50 50)
+          , (loadTextureBytes bytes, Rect 20 30 50 50)
           ]
   -- withTextures is so sexy
-  withTextures @a (fmap loadTexture layout) loop
+  withTextures @a layout loop
 
 loop
   :: forall a es
