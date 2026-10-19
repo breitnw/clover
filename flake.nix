@@ -12,24 +12,6 @@
     flake-utils.lib.eachDefaultSystem (system: let
       pkgs = nixpkgs.legacyPackages.${system};
       hp = pkgs.haskell.packages.ghc912;
-      libmpd = hp.callCabal2nix
-        "libmpd"
-        (pkgs.fetchFromGitHub {
-          owner = "breitnw";
-          repo = "libmpd-haskell";
-          rev = "breitnw-dev";
-          sha256 = "sha256-NLo1G9jsm60TAQyb6S6/JnXP47LIZOo2JAG8qjdFZ1U=";
-        })
-        {};
-      libmpd-effectful = hp.callCabal2nix
-        "libmpd"
-        (pkgs.fetchFromGitHub {
-          owner = "breitnw";
-          repo = "libmpd-effectful";
-          rev = "breitnw-dev";
-          sha256 = "sha256-vKY43A2N0B8GL9nK0zzxeH9fX9LyKjU3LVVroLoqf4w=";
-        })
-        { inherit libmpd; };
     in {
       packages.default = hp.developPackage {
         root = ./.;
@@ -39,9 +21,9 @@
         # developPackage doesn't read cabal.project, so we need to manually pass
         # the dependencies specified there
         overrides = self: super: {
-          inherit libmpd-effectful;
           SDL3 = pkgs.sdl3;
           SDL3_image = pkgs.sdl3-image;
+          libmpdclient = pkgs.libmpdclient;
         };
 
         modifier = let
@@ -81,6 +63,9 @@
 
             # Dependencies for SDL3_Image
             pkgs.sdl3-image
+
+            # Dependencies for libmpdclient
+            pkgs.libmpdclient
           ];
           in drv: addBuildTools (addExtraLibraries drv);
       };

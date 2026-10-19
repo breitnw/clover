@@ -18,10 +18,6 @@ extra-doc-files:    CHANGELOG.md
 homepage:           https://github.com/breitnw/clover#readme
 bug-reports:        https://github.com/breitnw/clover/issues
 
-source-repository head
-  type:     git
-  location: https://github.com/breitnw/libmpd-effectful
-
 common warnings
     ghc-options: -Wall
 
@@ -67,13 +63,16 @@ library
     extra-libraries: SDL3, SDL3_image
     pkgconfig-depends:
       sdl3 >=3.3.0,
-      sdl3-image >=3.3.0
+      sdl3-image >=3.3.0,
+      libmpdclient >=2.24
+
+    c-sources:
+      cbits/scratch.c
 
     build-depends: 
       base              >=4.16 && <5,
       effectful        ^>=2.6.1,
       effectful-th     ^>=1.0.0.4,
-      libmpd-effectful ^>=0.1,
       text,
       bytestring,
       containers,
@@ -98,6 +97,7 @@ library
       -- FFIs
       Foreign.Lib.SDL,
       Foreign.Lib.SDLImage,
+      Foreign.Lib.MPD,
 
     other-modules:    
       -- Effects
@@ -113,6 +113,8 @@ library
       -- FFIs
       Foreign.Lib.SDL.Types,
       Foreign.Lib.SDL.FFI,
+      Foreign.Lib.MPD.Types,
+      Foreign.Lib.MPD.FFI,
 
 
 -- main executable -------------------------------------------------------------
@@ -178,3 +180,7 @@ executable renderer
 executable sdl
     import:  example-exe
     main-is: SDL.hs
+
+executable mpd
+    import:  example-exe
+    main-is: MPD.hs
