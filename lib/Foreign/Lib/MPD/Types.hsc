@@ -9,47 +9,44 @@ module Foreign.Lib.MPD.Types where
 
 import Foreign.C (CInt (..))
 
--- TODO use `enum` for SDL too?
-
 #include <mpd/client.h>
 
 -- MPD.Connection --------------------------------------------------------------
 
 data MPDConnection
 
-type MPDError = CInt
-mpdErrorSuccess = #{const MPD_ERROR_SUCCESS} :: MPDError
--- #{enum MPDError MPDError
---     MPD_ERROR_SUCCESS
---     MPD_ERROR_OOM
---     MPD_ERROR_ARGUMENT
---     MPD_ERROR_STATE
---     MPD_ERROR_TIMEOUT
---     MPD_ERROR_SYSTEM
---     MPD_ERROR_RESOLVER
---     MPD_ERROR_MALFORMED
---     MPD_ERROR_CLOSED
---     MPD_ERROR_SERVER}
+newtype MPDError = MPDError CInt
+
+pattern MPD_ERROR_SUCCESS                  = MPDError (#const MPD_ERROR_SUCCESS)
+pattern MPD_ERROR_OOM                      = MPDError (#const MPD_ERROR_OOM)
+pattern MPD_ERROR_ARGUMENT                 = MPDError (#const MPD_ERROR_ARGUMENT)
+pattern MPD_ERROR_STATE                    = MPDError (#const MPD_ERROR_STATE)
+pattern MPD_ERROR_TIMEOUT                  = MPDError (#const MPD_ERROR_TIMEOUT)
+pattern MPD_ERROR_SYSTEM                   = MPDError (#const MPD_ERROR_SYSTEM)
+pattern MPD_ERROR_RESOLVER                 = MPDError (#const MPD_ERROR_RESOLVER)
+pattern MPD_ERROR_MALFORMED                = MPDError (#const MPD_ERROR_MALFORMED)
+pattern MPD_ERROR_CLOSED                   = MPDError (#const MPD_ERROR_CLOSED)
+pattern MPD_ERROR_SERVER                   = MPDError (#const MPD_ERROR_SERVER)
 
 -- MPD.Protocol ----------------------------------------------------------------
 
 newtype MPDServerError = MPDServerError CInt
-#{enum MPDServerError MPDServerError
-    MPD_SERVER_ERROR_UNK
-    
-    MPD_SERVER_ERROR_NOT_LIST
-    MPD_SERVER_ERROR_ARG
-    MPD_SERVER_ERROR_PASSWORD
-    MPD_SERVER_ERROR_PERMISSION
-    MPD_SERVER_ERROR_UNKNOWN_CMD
 
-    MPD_SERVER_ERROR_NO_EXIST
-    MPD_SERVER_ERROR_PLAYLIST_MAX
-    MPD_SERVER_ERROR_SYSTEM
-    MPD_SERVER_ERROR_PLAYLIST_LOAD
-    MPD_SERVER_ERROR_UPDATE_ALREADY
-    MPD_SERVER_ERROR_PLAYER_SYNC
-    MPD_SERVER_ERROR_EXIST}
+pattern MPD_SERVER_ERROR_UNK               = MPDServerError (#const MPD_SERVER_ERROR_UNK)
+    
+pattern MPD_SERVER_ERROR_NOT_LIST          = MPDServerError (#const MPD_SERVER_ERROR_NOT_LIST)
+pattern MPD_SERVER_ERROR_ARG               = MPDServerError (#const MPD_SERVER_ERROR_ARG)
+pattern MPD_SERVER_ERROR_PASSWORD          = MPDServerError (#const MPD_SERVER_ERROR_PASSWORD)
+pattern MPD_SERVER_ERROR_PERMISSION        = MPDServerError (#const MPD_SERVER_ERROR_PERMISSION)
+pattern MPD_SERVER_ERROR_UNKNOWN_CMD       = MPDServerError (#const MPD_SERVER_ERROR_UNKNOWN_CMD)
+ 
+pattern MPD_SERVER_ERROR_NO_EXIST          = MPDServerError (#const MPD_SERVER_ERROR_NO_EXIST)
+pattern MPD_SERVER_ERROR_PLAYLIST_MAX      = MPDServerError (#const MPD_SERVER_ERROR_PLAYLIST_MAX)
+pattern MPD_SERVER_ERROR_SYSTEM            = MPDServerError (#const MPD_SERVER_ERROR_SYSTEM)
+pattern MPD_SERVER_ERROR_PLAYLIST_LOAD     = MPDServerError (#const MPD_SERVER_ERROR_PLAYLIST_LOAD)
+pattern MPD_SERVER_ERROR_UPDATE_ALREADY    = MPDServerError (#const MPD_SERVER_ERROR_UPDATE_ALREADY)
+pattern MPD_SERVER_ERROR_PLAYER_SYNC       = MPDServerError (#const MPD_SERVER_ERROR_PLAYER_SYNC)
+pattern MPD_SERVER_ERROR_EXIST             = MPDServerError (#const MPD_SERVER_ERROR_EXIST)
 
 -- MPD.Song --------------------------------------------------------------------
 
@@ -58,45 +55,45 @@ data MPDSong
 -- MPD.Tag ---------------------------------------------------------------------
 
 newtype MPDTag = MPDTag CInt
-#{enum MPDTag MPDTag
-    MPD_TAG_UNKNOWN
-    MPD_TAG_ARTIST
-    MPD_TAG_ALBUM
-    MPD_TAG_ALBUM_ARTIST
-    MPD_TAG_TITLE
-    MPD_TAG_TRACK
-    MPD_TAG_NAME
-    MPD_TAG_GENRE
-    MPD_TAG_DATE
-    MPD_TAG_COMPOSER
-    MPD_TAG_PERFORMER
-    MPD_TAG_COMMENT
-    MPD_TAG_DISC
 
-    MPD_TAG_MUSICBRAINZ_ARTISTID
-    MPD_TAG_MUSICBRAINZ_ALBUMID
-    MPD_TAG_MUSICBRAINZ_ALBUMARTISTID
-    MPD_TAG_MUSICBRAINZ_TRACKID
-    MPD_TAG_MUSICBRAINZ_RELEASETRACKID
+pattern MPD_TAG_UNKNOWN                    = MPDServerError (#const MPD_TAG_UNKNOWN)
+pattern MPD_TAG_ARTIST                     = MPDServerError (#const MPD_TAG_ARTIST)
+pattern MPD_TAG_ALBUM                      = MPDServerError (#const MPD_TAG_ALBUM)
+pattern MPD_TAG_ALBUM_ARTIST               = MPDServerError (#const MPD_TAG_ALBUM_ARTIST)
+pattern MPD_TAG_TITLE                      = MPDServerError (#const MPD_TAG_TITLE)
+pattern MPD_TAG_TRACK                      = MPDServerError (#const MPD_TAG_TRACK)
+pattern MPD_TAG_NAME                       = MPDServerError (#const MPD_TAG_NAME)
+pattern MPD_TAG_GENRE                      = MPDServerError (#const MPD_TAG_GENRE)
+pattern MPD_TAG_DATE                       = MPDServerError (#const MPD_TAG_DATE)
+pattern MPD_TAG_COMPOSER                   = MPDServerError (#const MPD_TAG_COMPOSER)
+pattern MPD_TAG_PERFORMER                  = MPDServerError (#const MPD_TAG_PERFORMER)
+pattern MPD_TAG_COMMENT                    = MPDServerError (#const MPD_TAG_COMMENT)
+pattern MPD_TAG_DISC                       = MPDServerError (#const MPD_TAG_DISC)
 
-    MPD_TAG_ORIGINAL_DATE
+pattern MPD_TAG_MUSICBRAINZ_ARTISTID       = MPDServerError (#const MPD_TAG_MUSICBRAINZ_ARTISTID)
+pattern MPD_TAG_MUSICBRAINZ_ALBUMID        = MPDServerError (#const MPD_TAG_MUSICBRAINZ_ALBUMID)
+pattern MPD_TAG_MUSICBRAINZ_ALBUMARTISTID  = MPDServerError (#const MPD_TAG_MUSICBRAINZ_ALBUMARTISTID)
+pattern MPD_TAG_MUSICBRAINZ_TRACKID        = MPDServerError (#const MPD_TAG_MUSICBRAINZ_TRACKID)
+pattern MPD_TAG_MUSICBRAINZ_RELEASETRACKID = MPDServerError (#const MPD_TAG_MUSICBRAINZ_RELEASETRACKID)
 
-    MPD_TAG_ARTIST_SORT
-    MPD_TAG_ALBUM_ARTIST_SORT
+pattern MPD_TAG_ORIGINAL_DATE              = MPDServerError (#const MPD_TAG_ORIGINAL_DATE)
 
-    MPD_TAG_ALBUM_SORT
-    MPD_TAG_LABEL
-    MPD_TAG_MUSICBRAINZ_WORKID
+pattern MPD_TAG_ARTIST_SORT                = MPDServerError (#const MPD_TAG_ARTIST_SORT)
+pattern MPD_TAG_ALBUM_ARTIST_SORT          = MPDServerError (#const MPD_TAG_ALBUM_ARTIST_SORT)
 
-    MPD_TAG_GROUPING
-    MPD_TAG_WORK
-    MPD_TAG_CONDUCTOR
+pattern MPD_TAG_ALBUM_SORT                 = MPDServerError (#const MPD_TAG_ALBUM_SORT)
+pattern MPD_TAG_LABEL                      = MPDServerError (#const MPD_TAG_LABEL)
+pattern MPD_TAG_MUSICBRAINZ_WORKID         = MPDServerError (#const MPD_TAG_MUSICBRAINZ_WORKID)
 
-    MPD_TAG_COMPOSER_SORT
-    MPD_TAG_ENSEMBLE
-    MPD_TAG_MOVEMENT
-    MPD_TAG_MOVEMENTNUMBER
-    MPD_TAG_LOCATION
-    MPD_TAG_MOOD
-    MPD_TAG_TITLE_SORT
-    MPD_TAG_MUSICBRAINZ_RELEASEGROUPID}
+pattern MPD_TAG_GROUPING                   = MPDServerError (#const MPD_TAG_GROUPING)
+pattern MPD_TAG_WORK                       = MPDServerError (#const MPD_TAG_WORK)
+pattern MPD_TAG_CONDUCTOR                  = MPDServerError (#const MPD_TAG_CONDUCTOR)
+
+pattern MPD_TAG_COMPOSER_SORT              = MPDServerError (#const MPD_TAG_COMPOSER_SORT)
+pattern MPD_TAG_ENSEMBLE                   = MPDServerError (#const MPD_TAG_ENSEMBLE)
+pattern MPD_TAG_MOVEMENT                   = MPDServerError (#const MPD_TAG_MOVEMENT)
+pattern MPD_TAG_MOVEMENTNUMBER             = MPDServerError (#const MPD_TAG_MOVEMENTNUMBER)
+pattern MPD_TAG_LOCATION                   = MPDServerError (#const MPD_TAG_LOCATION)
+pattern MPD_TAG_MOOD                       = MPDServerError (#const MPD_TAG_MOOD)
+pattern MPD_TAG_TITLE_SORT                 = MPDServerError (#const MPD_TAG_TITLE_SORT)
+pattern MPD_TAG_MUSICBRAINZ_RELEASEGROUPID = MPDServerError (#const MPD_TAG_MUSICBRAINZ_RELEASEGROUPID)
