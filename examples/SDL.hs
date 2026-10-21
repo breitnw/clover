@@ -28,7 +28,6 @@ import System.Exit (exitFailure)
 
 import Effectful ()
 
-import Data.Word
 import Foreign.Lib.SDL qualified as F
 import Foreign.Lib.SDLImage qualified as F
 import Foreign.TH
@@ -46,7 +45,7 @@ logMsg logFn msg = withConstCString msg $ logFn 0 $(ccstring "%s")
 
 -- Resource allocators and deallocators ----------------------------------------
 
-initSDL :: Word32 -> IO ()
+initSDL :: F.SDLInitFlags -> IO ()
 initSDL initFlags = do
   initSuccess <- F.sdlInit initFlags
   unless (toBool initSuccess) $ do
@@ -59,7 +58,12 @@ quitSDL = do
   logMsg F.sdlLogInfo "Quitting SDL"
   F.sdlQuit
 
-createWindow :: ConstCString -> CInt -> CInt -> Word64 -> IO (Ptr F.SDLWindow)
+createWindow
+  :: ConstCString
+  -> CInt
+  -> CInt
+  -> F.SDLWindowFlags
+  -> IO (Ptr F.SDLWindow)
 createWindow title w h flags = do
   win <- F.sdlCreateWindow title w h flags
   when (win == nullPtr) $ do
