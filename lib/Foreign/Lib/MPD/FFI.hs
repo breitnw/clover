@@ -11,7 +11,7 @@ Stability   : unstable
 module Foreign.Lib.MPD.FFI where
 
 import Foreign (Ptr)
-import Foreign.C (CBool (..), CInt (..), CUInt (..))
+import Foreign.C (CBool (..), CInt (..), CSize (..), CUInt (..))
 import Foreign.C.ConstPtr (ConstPtr (..))
 
 import Foreign.Lib.MPD.Types
@@ -42,6 +42,14 @@ foreign import capi unsafe "mpd/player.h mpd_run_stop"
   mpdRunStop :: Ptr MPDConnection -> IO CBool
 foreign import capi unsafe "mpd/player.h mpd_run_pause"
   mpdRunPause :: Ptr MPDConnection -> CBool -> IO CBool
+foreign import capi unsafe "mpd/player.h mpd_run_next"
+  mpdRunNext :: Ptr MPDConnection -> IO CBool
+foreign import capi unsafe "mpd/player.h mpd_run_previous"
+  mpdRunPrevious :: Ptr MPDConnection -> IO CBool
+
+-- TODO there seem to be other error handling methods too, figure out which to use
+-- foreign import capi unsafe "mpd/player.h mpd_clear_error"
+--   mpdClearError :: Ptr MPDConnection -> IO CBool
 
 -- MPD.Song --------------------------------------------------------------------
 
@@ -55,3 +63,39 @@ foreign import capi unsafe "mpd/song.h mpd_song_get_duration"
   mpdSongGetDuration :: Ptr MPDSong -> IO CUInt
 foreign import capi unsafe "mpd/song.h mpd_song_get_duration_ms"
   mpdSongGetDurationMs :: Ptr MPDSong -> IO CUInt
+
+-- MPD.ReadPicture -------------------------------------------------------------
+
+foreign import capi unsafe "mpd/readpicture.h mpd_run_readpicture"
+  mpdReadPicture
+    :: Ptr MPDConnection
+    -- ^ A valid and connected MPDConnection
+    -> ConstCString
+    -- ^ The URI of the song
+    -> CUInt
+    -- ^ Offset to read from
+    -> Ptr ()
+    -- ^ An already allocated buffer, the size must be the same or greater than
+    -- the binary chunk size (default 8192, can be set with binarylimit command)
+    -> CSize
+    -- ^ Size of the allocated buffer
+    -> CInt
+    -- ^ Read size on success, -1 on failure
+
+-- MPD.AlbumArt ----------------------------------------------------------------
+
+foreign import capi unsafe "mpd/albumart.h mpd_run_albumart"
+  mpdAlbumArt
+    :: Ptr MPDConnection
+    -- ^ A valid and connected MPDConnection
+    -> ConstCString
+    -- ^ The URI of the song
+    -> CUInt
+    -- ^ Offset to read from
+    -> Ptr ()
+    -- ^ An already allocated buffer, the size must be the same or greater than
+    -- the binary chunk size (default 8192, can be set with binarylimit command)
+    -> CSize
+    -- ^ Size of the allocated buffer
+    -> CInt
+    -- ^ Read size on success, -1 on failure

@@ -7,11 +7,13 @@ Stability   : unstable
 -}
 module Effectful.MusicPlayer (
   -- * Effect
-  module Effectful.MusicPlayer.Effect,
+
+  -- module Effectful.MusicPlayer.Effect,
 
   -- * Types
-  module Effectful.MusicPlayer.Types,
 ) where
 
-import Effectful.MusicPlayer.Effect
-import Effectful.MusicPlayer.Types
+-- module Effectful.MusicPlayer.Types,
+
+-- import Effectful.MusicPlayer.Effect
+-- import Effectful.MusicPlayer.Types

@@ -1,20 +1,25 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 {- |
-Module      : Effectful.MusicPlayer.Effect
+Module      : Effectful.MusicPlayer.Blocking.Effect
 Copyright   : (c) Nick Breitling 2026
 License     : GPL v3 (see LICENSE)
 Maintainer  : Nick Breitling <breitling.nw@gmail.com>
 Stability   : unstable
+
+MPD effect with blocking operations.
 -}
-module Effectful.MusicPlayer.Effect (
+module Effectful.MusicPlayer.Blocking.Effect (
   PlayMusic (..),
   currentSong,
-  getSong,
-  getArtwork,
+  loadArtwork,
   sendCommand,
 ) where
 
+-- TODO we don't really need a bytestring for LoadArtwork, just hand off the raw
+-- pointer? saves a huge memory copy, but costs some manual memory management
+
+import Data.ByteString qualified as BS
 import Effectful
 import Effectful.TH
 
@@ -29,26 +34,12 @@ data PlayMusic :: Effect where
   --
   -- If there is no song currently playing, returns Nothing.
   CurrentSong :: PlayMusic m (Maybe Song)
-  -- | Based on a song ID, get information on that song.
+  -- | Load a chunk of the artwork for the song specified by a song ID.
   --
-  -- Fails if the ID refers to an invalid song.
-  GetSong :: SongID -> PlayMusic m Song
-  -- | Based on a song ID, get its artwork, or Nothing if no artwork exists.
-  --
-  -- Fails if the ID refers to an invalid song.
-  GetArtwork :: SongID -> PlayMusic m (Maybe Image)
+  -- If the album art is ready or not present for the requested song, returns
+  -- 'Ready'. If the album art is still loading, returns 'Waiting'.
+  LoadArtwork :: SongID -> PlayMusic m (Status (Maybe BS.ByteString))
   -- | Send a command to control the backend
   SendCommand :: Command -> PlayMusic m ()
 
 makeEffect ''PlayMusic
-
-{- NOTES
-
-later, we want ways to enqueue songs, query library, etc
-might also want to have a setup fn where we prefetch album art for entire library
-
-TODO should SongId hold artwork?
-
-https://github.com/vimus/libmpd-haskell/blob/master/src/Network/MPD/Core.hs
-
--}

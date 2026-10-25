@@ -16,7 +16,6 @@ module Effectful.Renderer.Handler.SDL (
 import Control.Monad (forM_, unless, when)
 import Foreign (Bits ((.|.)), Ptr, castPtr, nullPtr, toBool, with)
 import Foreign.C (CFloat (..))
-import Foreign.C.ConstPtr (ConstPtr (..))
 import Foreign.Marshal (fromBool)
 
 import Data.ByteString qualified as BS
@@ -134,7 +133,7 @@ runSDLRenderer (Vec2 width height) title meta = reinterpret_ runSDL $ \case
     -- Open the SDL renderer.
     openRenderer win = do
       logInfo "Initializing SDL renderer"
-      ren <- liftIO (F.sdlCreateRenderer win (ConstPtr nullPtr))
+      ren <- liftIO (F.sdlCreateRenderer win constNullPtr)
       if ren == nullPtr
         then throwIO $ SDLException "Failed to initialize renderer"
         else return ren

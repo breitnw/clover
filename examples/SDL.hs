@@ -23,7 +23,6 @@ import Foreign (
   with,
  )
 import Foreign.C (CBool, CInt)
-import Foreign.C.ConstPtr (ConstPtr (..))
 import System.Exit (exitFailure)
 
 import Effectful ()
@@ -124,7 +123,7 @@ main = do
       destroyWindow
       $ \win -> do
         -- Try to create the renderer
-        bracket (createRenderer win (ConstPtr nullPtr)) destroyRenderer $ \ren -> do
+        bracket (createRenderer win constNullPtr) destroyRenderer $ \ren -> do
           -- Finally, the fun part!
           runApp ren
           logMsg F.sdlLogInfo "Done acquiring resources"

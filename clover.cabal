@@ -35,11 +35,11 @@ common language
         ConstraintKinds
         ScopedTypeVariables
 
-flag examples
-  description: Build example executables
-  -- TODO change default to false
-  default: True 
-  manual: True
+-- TODO add this back
+-- flag examples
+--   description: Build example executables
+--   default: False 
+--   manual: True
 
 flag pkgconfig
   description: Use pkgconfig to sort out C dependencies
@@ -85,8 +85,8 @@ library
       Foreign.Util,
 
       -- Effects
-      -- Effectful.MusicPlayer,
-      -- Effectful.MusicPlayer.Handler.MPD,
+      Effectful.MusicPlayer.Blocking,
+      Effectful.MusicPlayer.Blocking.Handler.MPD,
 
       Effectful.Logger,
       Effectful.Logger.Handler.SDL,
@@ -101,7 +101,7 @@ library
 
     other-modules:    
       -- Effects
-      -- Effectful.MusicPlayer.Conc.Effect,
+      Effectful.MusicPlayer.Blocking.Effect,
       Effectful.MusicPlayer.Types,
 
       Effectful.Logger.Effect,
@@ -157,10 +157,10 @@ common example-exe
     hs-source-dirs:   examples
 
     -- TODO
-    if flag(examples)
-      buildable: True
-    else
-      buildable: False
+    -- if flag(examples)
+    --   buildable: True
+    -- else
+    --   buildable: False
 
     build-depends:
       base >=4.16 && <5,
@@ -184,3 +184,7 @@ executable sdl
 executable mpd
     import:  example-exe
     main-is: MPD.hs
+
+executable music-player-blocking
+    import:  example-exe
+    main-is: MusicPlayerBlocking.hs

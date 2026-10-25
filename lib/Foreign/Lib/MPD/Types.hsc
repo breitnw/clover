@@ -1,3 +1,6 @@
+{-# LANGUAGE PatternSynonyms #-}
+{-# OPTIONS_GHC -Wno-missing-pattern-synonym-signatures #-}
+
 {- |
 Module      : Foreign.Lib.MPD.Types
 Copyright   : (c) Nick Breitling 2026
@@ -16,6 +19,7 @@ import Foreign.C (CInt (..))
 data MPDConnection
 
 newtype MPDError = MPDError CInt
+  deriving Eq
 
 pattern MPD_ERROR_SUCCESS                  = MPDError (#const MPD_ERROR_SUCCESS)
 pattern MPD_ERROR_OOM                      = MPDError (#const MPD_ERROR_OOM)
@@ -31,6 +35,7 @@ pattern MPD_ERROR_SERVER                   = MPDError (#const MPD_ERROR_SERVER)
 -- MPD.Protocol ----------------------------------------------------------------
 
 newtype MPDServerError = MPDServerError CInt
+  deriving Eq
 
 pattern MPD_SERVER_ERROR_UNK               = MPDServerError (#const MPD_SERVER_ERROR_UNK)
     
@@ -55,45 +60,46 @@ data MPDSong
 -- MPD.Tag ---------------------------------------------------------------------
 
 newtype MPDTag = MPDTag CInt
+  deriving Eq
 
-pattern MPD_TAG_UNKNOWN                    = MPDServerError (#const MPD_TAG_UNKNOWN)
-pattern MPD_TAG_ARTIST                     = MPDServerError (#const MPD_TAG_ARTIST)
-pattern MPD_TAG_ALBUM                      = MPDServerError (#const MPD_TAG_ALBUM)
-pattern MPD_TAG_ALBUM_ARTIST               = MPDServerError (#const MPD_TAG_ALBUM_ARTIST)
-pattern MPD_TAG_TITLE                      = MPDServerError (#const MPD_TAG_TITLE)
-pattern MPD_TAG_TRACK                      = MPDServerError (#const MPD_TAG_TRACK)
-pattern MPD_TAG_NAME                       = MPDServerError (#const MPD_TAG_NAME)
-pattern MPD_TAG_GENRE                      = MPDServerError (#const MPD_TAG_GENRE)
-pattern MPD_TAG_DATE                       = MPDServerError (#const MPD_TAG_DATE)
-pattern MPD_TAG_COMPOSER                   = MPDServerError (#const MPD_TAG_COMPOSER)
-pattern MPD_TAG_PERFORMER                  = MPDServerError (#const MPD_TAG_PERFORMER)
-pattern MPD_TAG_COMMENT                    = MPDServerError (#const MPD_TAG_COMMENT)
-pattern MPD_TAG_DISC                       = MPDServerError (#const MPD_TAG_DISC)
+pattern MPD_TAG_UNKNOWN                    = MPDTag (#const MPD_TAG_UNKNOWN)
+pattern MPD_TAG_ARTIST                     = MPDTag (#const MPD_TAG_ARTIST)
+pattern MPD_TAG_ALBUM                      = MPDTag (#const MPD_TAG_ALBUM)
+pattern MPD_TAG_ALBUM_ARTIST               = MPDTag (#const MPD_TAG_ALBUM_ARTIST)
+pattern MPD_TAG_TITLE                      = MPDTag (#const MPD_TAG_TITLE)
+pattern MPD_TAG_TRACK                      = MPDTag (#const MPD_TAG_TRACK)
+pattern MPD_TAG_NAME                       = MPDTag (#const MPD_TAG_NAME)
+pattern MPD_TAG_GENRE                      = MPDTag (#const MPD_TAG_GENRE)
+pattern MPD_TAG_DATE                       = MPDTag (#const MPD_TAG_DATE)
+pattern MPD_TAG_COMPOSER                   = MPDTag (#const MPD_TAG_COMPOSER)
+pattern MPD_TAG_PERFORMER                  = MPDTag (#const MPD_TAG_PERFORMER)
+pattern MPD_TAG_COMMENT                    = MPDTag (#const MPD_TAG_COMMENT)
+pattern MPD_TAG_DISC                       = MPDTag (#const MPD_TAG_DISC)
 
-pattern MPD_TAG_MUSICBRAINZ_ARTISTID       = MPDServerError (#const MPD_TAG_MUSICBRAINZ_ARTISTID)
-pattern MPD_TAG_MUSICBRAINZ_ALBUMID        = MPDServerError (#const MPD_TAG_MUSICBRAINZ_ALBUMID)
-pattern MPD_TAG_MUSICBRAINZ_ALBUMARTISTID  = MPDServerError (#const MPD_TAG_MUSICBRAINZ_ALBUMARTISTID)
-pattern MPD_TAG_MUSICBRAINZ_TRACKID        = MPDServerError (#const MPD_TAG_MUSICBRAINZ_TRACKID)
-pattern MPD_TAG_MUSICBRAINZ_RELEASETRACKID = MPDServerError (#const MPD_TAG_MUSICBRAINZ_RELEASETRACKID)
+pattern MPD_TAG_MUSICBRAINZ_ARTISTID       = MPDTag (#const MPD_TAG_MUSICBRAINZ_ARTISTID)
+pattern MPD_TAG_MUSICBRAINZ_ALBUMID        = MPDTag (#const MPD_TAG_MUSICBRAINZ_ALBUMID)
+pattern MPD_TAG_MUSICBRAINZ_ALBUMARTISTID  = MPDTag (#const MPD_TAG_MUSICBRAINZ_ALBUMARTISTID)
+pattern MPD_TAG_MUSICBRAINZ_TRACKID        = MPDTag (#const MPD_TAG_MUSICBRAINZ_TRACKID)
+pattern MPD_TAG_MUSICBRAINZ_RELEASETRACKID = MPDTag (#const MPD_TAG_MUSICBRAINZ_RELEASETRACKID)
 
-pattern MPD_TAG_ORIGINAL_DATE              = MPDServerError (#const MPD_TAG_ORIGINAL_DATE)
+pattern MPD_TAG_ORIGINAL_DATE              = MPDTag (#const MPD_TAG_ORIGINAL_DATE)
 
-pattern MPD_TAG_ARTIST_SORT                = MPDServerError (#const MPD_TAG_ARTIST_SORT)
-pattern MPD_TAG_ALBUM_ARTIST_SORT          = MPDServerError (#const MPD_TAG_ALBUM_ARTIST_SORT)
+pattern MPD_TAG_ARTIST_SORT                = MPDTag (#const MPD_TAG_ARTIST_SORT)
+pattern MPD_TAG_ALBUM_ARTIST_SORT          = MPDTag (#const MPD_TAG_ALBUM_ARTIST_SORT)
 
-pattern MPD_TAG_ALBUM_SORT                 = MPDServerError (#const MPD_TAG_ALBUM_SORT)
-pattern MPD_TAG_LABEL                      = MPDServerError (#const MPD_TAG_LABEL)
-pattern MPD_TAG_MUSICBRAINZ_WORKID         = MPDServerError (#const MPD_TAG_MUSICBRAINZ_WORKID)
+pattern MPD_TAG_ALBUM_SORT                 = MPDTag (#const MPD_TAG_ALBUM_SORT)
+pattern MPD_TAG_LABEL                      = MPDTag (#const MPD_TAG_LABEL)
+pattern MPD_TAG_MUSICBRAINZ_WORKID         = MPDTag (#const MPD_TAG_MUSICBRAINZ_WORKID)
 
-pattern MPD_TAG_GROUPING                   = MPDServerError (#const MPD_TAG_GROUPING)
-pattern MPD_TAG_WORK                       = MPDServerError (#const MPD_TAG_WORK)
-pattern MPD_TAG_CONDUCTOR                  = MPDServerError (#const MPD_TAG_CONDUCTOR)
+pattern MPD_TAG_GROUPING                   = MPDTag (#const MPD_TAG_GROUPING)
+pattern MPD_TAG_WORK                       = MPDTag (#const MPD_TAG_WORK)
+pattern MPD_TAG_CONDUCTOR                  = MPDTag (#const MPD_TAG_CONDUCTOR)
 
-pattern MPD_TAG_COMPOSER_SORT              = MPDServerError (#const MPD_TAG_COMPOSER_SORT)
-pattern MPD_TAG_ENSEMBLE                   = MPDServerError (#const MPD_TAG_ENSEMBLE)
-pattern MPD_TAG_MOVEMENT                   = MPDServerError (#const MPD_TAG_MOVEMENT)
-pattern MPD_TAG_MOVEMENTNUMBER             = MPDServerError (#const MPD_TAG_MOVEMENTNUMBER)
-pattern MPD_TAG_LOCATION                   = MPDServerError (#const MPD_TAG_LOCATION)
-pattern MPD_TAG_MOOD                       = MPDServerError (#const MPD_TAG_MOOD)
-pattern MPD_TAG_TITLE_SORT                 = MPDServerError (#const MPD_TAG_TITLE_SORT)
-pattern MPD_TAG_MUSICBRAINZ_RELEASEGROUPID = MPDServerError (#const MPD_TAG_MUSICBRAINZ_RELEASEGROUPID)
+pattern MPD_TAG_COMPOSER_SORT              = MPDTag (#const MPD_TAG_COMPOSER_SORT)
+pattern MPD_TAG_ENSEMBLE                   = MPDTag (#const MPD_TAG_ENSEMBLE)
+pattern MPD_TAG_MOVEMENT                   = MPDTag (#const MPD_TAG_MOVEMENT)
+pattern MPD_TAG_MOVEMENTNUMBER             = MPDTag (#const MPD_TAG_MOVEMENTNUMBER)
+pattern MPD_TAG_LOCATION                   = MPDTag (#const MPD_TAG_LOCATION)
+pattern MPD_TAG_MOOD                       = MPDTag (#const MPD_TAG_MOOD)
+pattern MPD_TAG_TITLE_SORT                 = MPDTag (#const MPD_TAG_TITLE_SORT)
+pattern MPD_TAG_MUSICBRAINZ_RELEASEGROUPID = MPDTag (#const MPD_TAG_MUSICBRAINZ_RELEASEGROUPID)

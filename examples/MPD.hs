@@ -12,7 +12,6 @@ module Main where
 
 import Control.Monad (unless, when)
 import Foreign (Ptr, nullPtr)
-import Foreign.C.ConstPtr (ConstPtr (..))
 import System.Exit (exitFailure)
 
 import Effectful ()
@@ -20,6 +19,7 @@ import Effectful ()
 import Foreign.C.String (peekCString)
 import Foreign.Lib.MPD qualified as F
 import Foreign.TH
+import Foreign.Util
 
 main :: IO ()
 main = do
@@ -36,7 +36,7 @@ main = do
     exitFailure
 
   uri <- F.mpdSongGetURI song
-  uriStr <- peekCString $ unConstPtr uri
+  uriStr <- peekConstPtr uri
   putStrLn $ "Now playing: " <> uriStr
   F.mpdSongFree song
 
@@ -47,6 +47,6 @@ handleMPDErrors :: Ptr F.MPDConnection -> IO ()
 handleMPDErrors conn = do
   err <- F.mpdConnectionGetError conn
   unless (err == F.mpdErrorSuccess) $ do
-    msg <- F.mpdConnectionGetErrorMessage conn >>= peekCString . unConstPtr
+    msg <- F.mpdConnectionGetErrorMessage conn >>= peekConstCString
     putStrLn $ "MPD failure: " <> msg
     exitFailure
