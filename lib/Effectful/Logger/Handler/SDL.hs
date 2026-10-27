@@ -23,6 +23,6 @@ import Foreign.Util
 
 runSDLLogger :: IOE :> es => Eff (Log : es) a -> Eff es a
 runSDLLogger = interpret_ $ \case
-  LogInfo msg -> liftIO $ withConstCString msg (F.sdlLogInfo 0 $(ccstring "%s"))
-  LogWarn msg -> liftIO $ withConstCString msg (F.sdlLogWarn 0 $(ccstring "%s"))
-  LogError msg -> liftIO $ withConstCString msg (F.sdlLogError 0 $(ccstring "%s"))
+  LogInfo msg -> liftIO $ withCString msg (F.sdlLogInfo 0 $(ccstring "%s"))
+  LogWarn msg -> liftIO $ withCString msg (F.sdlLogWarn 0 $(ccstring "%s"))
+  LogError msg -> liftIO $ withCString msg (F.sdlLogError 0 $(ccstring "%s"))

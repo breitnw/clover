@@ -18,7 +18,6 @@ import Foreign (
   Bits (..),
   Ptr,
   maybeWith,
-  nullPtr,
   toBool,
   with,
  )
@@ -40,7 +39,7 @@ type LoggingFunc = (CInt -> ConstCString -> ConstCString -> IO ())
 -- Always uses the %s format specifier, since allowing any format string is a
 -- security vulnerability.
 logMsg :: LoggingFunc -> T.Text -> IO ()
-logMsg logFn msg = withConstCString msg $ logFn 0 $(ccstring "%s")
+logMsg logFn msg = withCString msg $ logFn 0 $(ccstring "%s")
 
 -- Resource allocators and deallocators ----------------------------------------
 
@@ -117,13 +116,13 @@ main = do
         F.sdlPropAppMetadataNameString
         $(ccstring "SDL demo")
     -- Try to create the window
-    let createWindow' title w h flags = withConstCString title $ \title' -> createWindow title' w h flags
+    let createWindow' title w h flags = withCString title $ \title' -> createWindow title' w h flags
     bracket
       (createWindow' "SDL effect demo" 200 200 windowFlags)
       destroyWindow
       $ \win -> do
         -- Try to create the renderer
-        bracket (createRenderer win constNullPtr) destroyRenderer $ \ren -> do
+        bracket (createRenderer win nullPtr) destroyRenderer $ \ren -> do
           -- Finally, the fun part!
           runApp ren
           logMsg F.sdlLogInfo "Done acquiring resources"

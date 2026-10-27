@@ -11,12 +11,12 @@ Stability   : unstable
 module Main where
 
 import Control.Monad (unless, when)
-import Foreign (Ptr, nullPtr)
+import Foreign (Ptr)
 import System.Exit (exitFailure)
 
+import Data.Text qualified as T
 import Effectful ()
 
-import Foreign.C.String (peekCString)
 import Foreign.Lib.MPD qualified as F
 import Foreign.TH
 import Foreign.Util
@@ -36,8 +36,8 @@ main = do
     exitFailure
 
   uri <- F.mpdSongGetURI song
-  uriStr <- peekConstPtr uri
-  putStrLn $ "Now playing: " <> uriStr
+  uriText <- peekCString uri
+  putStrLn . T.unpack $ "Now playing: " <> uriText
   F.mpdSongFree song
 
   F.mpdConnectionFree conn
@@ -46,7 +46,7 @@ main = do
 handleMPDErrors :: Ptr F.MPDConnection -> IO ()
 handleMPDErrors conn = do
   err <- F.mpdConnectionGetError conn
-  unless (err == F.mpdErrorSuccess) $ do
-    msg <- F.mpdConnectionGetErrorMessage conn >>= peekConstCString
-    putStrLn $ "MPD failure: " <> msg
+  unless (err == F.MPD_ERROR_SUCCESS) $ do
+    msg <- F.mpdConnectionGetErrorMessage conn >>= peekCString
+    putStrLn . T.unpack $ "MPD failure: " <> msg
     exitFailure

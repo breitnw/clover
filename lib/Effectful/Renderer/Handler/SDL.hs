@@ -14,7 +14,7 @@ module Effectful.Renderer.Handler.SDL (
 ) where
 
 import Control.Monad (forM_, unless, when)
-import Foreign (Bits ((.|.)), Ptr, castPtr, nullPtr, toBool, with)
+import Foreign (Bits ((.|.)), Ptr, castPtr, toBool, with)
 import Foreign.C (CFloat (..))
 import Foreign.Marshal (fromBool)
 
@@ -115,7 +115,7 @@ runSDLRenderer (Vec2 width height) title meta = reinterpret_ runSDL $ \case
     openWindow = do
       logInfo "Initializing SDL window"
       let flags = F.SDL_WINDOW_TRANSPARENT .|. F.SDL_WINDOW_BORDERLESS
-      win <- liftIO $ withConstCString title $ \title' ->
+      win <- liftIO $ withCString title $ \title' ->
         F.sdlCreateWindow
           title'
           (fromIntegral width)
@@ -133,7 +133,7 @@ runSDLRenderer (Vec2 width height) title meta = reinterpret_ runSDL $ \case
     -- Open the SDL renderer.
     openRenderer win = do
       logInfo "Initializing SDL renderer"
-      ren <- liftIO (F.sdlCreateRenderer win constNullPtr)
+      ren <- liftIO (F.sdlCreateRenderer win nullPtr)
       if ren == nullPtr
         then throwIO $ SDLException "Failed to initialize renderer"
         else return ren
@@ -156,7 +156,7 @@ setMetadata meta = do
         , (smType, F.sdlPropAppMetadataTypeString)
         ]
   forM_ metadataProps $ \(field, prop) ->
-    withConstCString (field meta) $ F.sdlSetAppMetadataProperty prop
+    withCString (field meta) $ F.sdlSetAppMetadataProperty prop
 
 clear'
   :: ( Reader SDLContext :> es
@@ -198,7 +198,7 @@ loadTextureFile' (Path pathText) = do
   logInfo $ "Creating texture: " <> pathText
   -- NOTE will this break on windows where the character encoding is different?
   -- might need to use OsPath
-  tex <- liftIO $ withConstCString pathText $ F.imgLoadTexture ren
+  tex <- liftIO $ withCString pathText $ F.imgLoadTexture ren
   -- Make sure the texture was loaded properly
   when (tex == nullPtr) $
     throwIO $

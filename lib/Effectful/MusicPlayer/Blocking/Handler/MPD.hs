@@ -17,7 +17,7 @@ module Effectful.MusicPlayer.Blocking.Handler.MPD (
 import Control.Monad (unless, when)
 import Foreign (fromBool, toBool)
 import Foreign.C (CInt, CSize, CUInt)
-import Foreign.Ptr
+import Foreign.Ptr (Ptr)
 
 import Data.ByteString qualified as BS
 import Data.Text qualified as T
@@ -72,12 +72,10 @@ handleMPDErrors conn = do
   unless (err == F.MPD_ERROR_SUCCESS) $ do
     msg <- liftIO $ F.mpdConnectionGetErrorMessage conn
     -- TODO clear the error in case user recovers
-    msgText <- liftIO $ peekConstCString msg
+    msgText <- liftIO $ peekCString msg
     throwIO $ MPDException msgText
 
 -- EFFECT HANDLER --------------------------------------------------------------
-
-type MPDEffects es = (Reader (Ptr F.MPDConnection) : State ArtworkState : es)
 
 runMPDMusicPlayerBlocking
   :: forall es a
@@ -88,27 +86,26 @@ runMPDMusicPlayerBlocking
 runMPDMusicPlayerBlocking (MPDConfig host port password timeout) =
   -- TODO set password
   reinterpret_ runMPD $ \case
-    -- CurrentSong -> fmap asCloverSong <$> MPD.currentSong
-    -- GetSong songId -> getSong' songId
-    -- GetArtwork songId -> getArtwork' songId
     CurrentSong -> currentSong'
     LoadArtwork songID -> loadArtwork' songID
     SendCommand cmd -> sendCommand' cmd
   where
     runMPD op = bracket openMPD closeMPD $ \conn -> do
-      handleOOM conn
       handleMPDErrors conn
       runReader conn $
         evalState @(Maybe ArtworkState) Nothing op
 
     -- Open a MPD connection. Only checks for out of memory errors.
+    -- Don't want to check for MPD errors yet, otherwise conn will not be freed
     openMPD = do
       logInfo "Opening MPD connection"
-      liftIO $ withConstCString host $ \hostCStr ->
+      conn <- liftIO $ withCString host $ \hostCStr ->
         F.mpdConnectionNew
           hostCStr
           (maybe 0 fromIntegral port)
           (maybe 0 fromIntegral timeout)
+      handleOOM conn
+      return conn
 
     -- Close an MPD connection.
     closeMPD :: Ptr F.MPDConnection -> Eff es ()
@@ -121,11 +118,11 @@ currentSong'
   => Eff es (Maybe Song)
 currentSong' = do
   conn <- ask
-  bracket (getCurrentSong conn) destroySong $ \song -> do
+  bracket (getCurrentSong conn) destroySong $ \maybeSong -> do
     handleMPDErrors conn
-    if song == nullPtr
-      then return Nothing
-      else do
+    case maybeSong of
+      Nothing -> return Nothing
+      Just song -> do
         title <- maybeGetTagText =<< liftIO (F.mpdSongGetTag song F.MPD_TAG_TITLE 0)
         artist <- maybeGetTagText =<< liftIO (F.mpdSongGetTag song F.MPD_TAG_ARTIST 0)
         album <- maybeGetTagText =<< liftIO (F.mpdSongGetTag song F.MPD_TAG_ALBUM 0)
@@ -135,22 +132,23 @@ currentSong' = do
             . fromIntegral
             <$> liftIO (F.mpdSongGetDurationMs song)
         songID <- SongID <$> (getTagText =<< liftIO (F.mpdSongGetURI song))
-        return $ Just $ Song title artist album duration songID
+        return $ Just (Song title artist album duration songID)
   where
-    -- Get current song without checking for errors.
-    getCurrentSong conn = liftIO (F.mpdRunCurrentSong conn)
+    -- Get current song, or Nothing if there is no song playing
+    getCurrentSong = liftIO . fmap nullToNothing . F.mpdRunCurrentSong
 
-    -- Free memory allocated for a song.
-    destroySong = liftIO . F.mpdSongFree
+    -- Free memory allocated for a song, or pass if the song is Nothing
+    destroySong = liftIO . maybe (return ()) F.mpdSongFree
 
     -- Convert a tag value (constCString) to text.
-    getTagText = liftIO . peekConstCString
+    getTagText = liftIO . peekCString
 
     -- Convert a tag value (constCString) to text, or Nothing if null
-    maybeGetTagText rawTag =
-      if rawTag == constNullPtr
-        then return Nothing
-        else Just <$> getTagText rawTag
+    maybeGetTagText = traverse getTagText . nullToNothing
+
+-- if rawTag == constNullPtr
+--   then return Nothing
+--   else Just <$> getTagText rawTag
 
 loadArtwork'
   :: ( IOE :> es
