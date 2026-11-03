@@ -68,7 +68,7 @@ type ArtworkFetcher =
   -- ^ Current offset (into both the remote file and local buffer).
   -> CStringLen
   -- ^ Buffer to read into.
-  -> Eff '[Error (Annotated MPDServerError), IOE] (Maybe ArtworkResponse)
+  -> Eff '[Log, Error (Annotated MPDServerError), IOE] (Maybe ArtworkResponse)
 
 -- | A buffer (pointer to allocated memory and size of that memory)
 -- type Buffer = (Ptr (), CSize)
@@ -325,6 +325,7 @@ runArtworkMethod sendCmd recvCmd conn (SongID uri) offset (buf, bufSize) = do
   -- TODO mpd_run_check?
 
   -- TODO marshalling the URI every time this function is called kinda sucks
+  logInfo "Sending command"
   sendStatus <- liftIO $ withCString uri $ \cUri -> sendCmd conn cUri (fromIntegral offset)
   unless (toBool sendStatus) $ do
     handleMPDErrors conn
@@ -332,21 +333,26 @@ runArtworkMethod sendCmd recvCmd conn (SongID uri) offset (buf, bufSize) = do
     failMalformed "Send status was False, but no error detected"
 
   -- recieve and parse the file size
+  logInfo "Receiving file size"
   pair <- liftIO $ F.mpdRecvPairNamed conn $(ccstring "fileSize")
-  when (pair == nullPtr) handleAARecvError
+  if pair == nullPtr
+    then handleAARecvError >> return Nothing
+    else do
+      (F.MPDPair _ fileSizeCCStr) <- liftIO $ peek pair
+      fileSizeText <- liftIO $ peekCString fileSizeCCStr
+      fileSize <- case T.decimal fileSizeText of
+        Left err -> failMalformed $ "File size could not be parsed as decimal: " <> T.pack err
+        Right (val, _) -> return val
+      liftIO $ F.mpdReturnPair conn pair
 
-  (F.MPDPair _ fileSizeCCStr) <- liftIO $ peek pair
-  fileSizeText <- liftIO $ peekCString fileSizeCCStr
-  fileSize <- case T.decimal fileSizeText of
-    Left err -> failMalformed $ "File size could not be parsed as decimal: " <> T.pack err
-    Right (val, _) -> return val
+      -- recieve the chunk into the buffer
+      logInfo "Receiving chunk"
+      readSize <- liftIO $ recvCmd conn (castPtr buf) (fromIntegral bufSize)
 
-  -- recieve the chunk into the buffer
-  readSize <- liftIO $ recvCmd conn (castPtr buf) (fromIntegral bufSize)
-
-  case readSize of
-    -1 -> handleAARecvError >> return Nothing
-    _ -> return $ Just (ArtworkResponse fileSize (fromIntegral readSize))
+      logInfo "Handling response"
+      if readSize == -1
+        then handleAARecvError >> return Nothing
+        else return $ Just (ArtworkResponse fileSize (fromIntegral readSize))
   where
     -- NOTE Overapproximates the outcomes that are interpreted as "no artwork
     -- exists," because I'm lazy and because it doesn't really matter...
