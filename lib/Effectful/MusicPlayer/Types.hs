@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 {- |
 Module      : Effectful.MusicPlayer.Types
@@ -19,6 +20,7 @@ module Effectful.MusicPlayer.Types (
 
 import Data.Text qualified as T
 import TextShow qualified as T
+import TextShow.TH qualified as T
 
 -- | A resource is either being waited on or done
 --
@@ -42,8 +44,7 @@ data MusicPlayerError
 -- | Unique identifier of a song.
 newtype SongID = SongID T.Text deriving (Show, Eq)
 
-instance T.TextShow SongID where
-  showb (SongID sid) = T.showb "SongID " <> T.showb sid
+T.deriveTextShow ''SongID
 
 -- | Data representing a song.
 data Song = Song
@@ -55,30 +56,9 @@ data Song = Song
   -- TODO should this include albumart?
   -- TODO or maybe some sort of albumart ID
   -- > probably not, haskell is GC'd so might as well store a ref
-  -- > just need to be careful to use the same bytestring if albumart is the same
   }
 
-instance T.TextShow Song where
-  showb
-    ( Song
-        { sgTitle = title
-        , sgArtist = artist
-        , sgAlbum = album
-        , sgDurationMillis = millis
-        , sgID = sid
-        }
-      ) =
-      T.showb "Song { title: "
-        <> T.showb title
-        <> T.showb ", artist: "
-        <> T.showb artist
-        <> T.showb ", album: "
-        <> T.showb album
-        <> T.showb ", millis: "
-        <> T.showb millis
-        <> T.showb ", id: "
-        <> T.showb sid
-        <> T.showb "}"
+T.deriveTextShow ''Song
 
 -- | Control command that can be sent to the music backend.
 data Command = Play | Pause | Resume | Next | Previous
