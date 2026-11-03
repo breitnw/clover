@@ -171,3 +171,8 @@ foreign import capi unsafe "mpd/recv.h mpd_return_pair"
 
 foreign import capi unsafe "mpd/response.h mpd_response_finish"
   mpdResponseFinish :: Ptr MPDConnection -> IO CBool
+
+-- MPD.Binary ------------------------------------------------------------------
+
+foreign import capi unsafe "mpd/binary.h mpd_run_binarylimit"
+  mpdRunBinaryLimit :: Ptr MPDConnection -> CUInt -> IO CBool

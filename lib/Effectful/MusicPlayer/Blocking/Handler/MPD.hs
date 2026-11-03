@@ -159,8 +159,14 @@ runMPDMusicPlayerBlocking (MPDConfig host port password timeout) =
   where
     runMPD op = bracket openMPD closeMPD $ \conn -> do
       handleMPDErrors conn
-      -- allocate the artwork init buffer
+      -- configure the binary limit & allocate the artwork init buffer
       let binaryLimit = 8192
+      blResult <- liftIO $ F.mpdRunBinaryLimit conn (fromIntegral binaryLimit)
+      unless (toBool blResult) $ do
+        handleMPDErrors conn
+        failMalformed "binarylimit status was False, but no error detected"
+      logInfo $ "Configured binary limit as " <> T.showt binaryLimit
+
       bracket (liftIO $ mallocBuffer binaryLimit) (liftIO . freeBuffer) $ \initBuf ->
         -- run the effect with the initialized resources
         runReader (MPDResources conn initBuf) $
@@ -317,6 +323,7 @@ runReadPicture :: ArtworkFetcher
 runReadPicture = runArtworkMethod F.mpdSendReadPicture F.mpdRecvReadPicture
 
 -- | Create an artwork fetcher given the send and recv commands.
+-- Reads into the start of the provided buffer.
 runArtworkMethod
   :: (Ptr F.MPDConnection -> ConstCString -> CUInt -> IO CBool)
   -> (Ptr F.MPDConnection -> Ptr () -> CSize -> IO CInt)
@@ -325,7 +332,6 @@ runArtworkMethod sendCmd recvCmd conn (SongID uri) offset (buf, bufSize) = do
   -- TODO mpd_run_check?
 
   -- TODO marshalling the URI every time this function is called kinda sucks
-  logInfo "Sending command"
   sendStatus <- liftIO $ withCString uri $ \cUri -> sendCmd conn cUri (fromIntegral offset)
   unless (toBool sendStatus) $ do
     handleMPDErrors conn
@@ -333,23 +339,19 @@ runArtworkMethod sendCmd recvCmd conn (SongID uri) offset (buf, bufSize) = do
     failMalformed "Send status was False, but no error detected"
 
   -- recieve and parse the file size
-  logInfo "Receiving file size"
-  pair <- liftIO $ F.mpdRecvPairNamed conn $(ccstring "fileSize")
+  pair <- liftIO $ F.mpdRecvPairNamed conn $(ccstring "size")
   if pair == nullPtr
     then handleAARecvError >> return Nothing
     else do
       (F.MPDPair _ fileSizeCCStr) <- liftIO $ peek pair
       fileSizeText <- liftIO $ peekCString fileSizeCCStr
+      liftIO $ F.mpdReturnPair conn pair
       fileSize <- case T.decimal fileSizeText of
         Left err -> failMalformed $ "File size could not be parsed as decimal: " <> T.pack err
         Right (val, _) -> return val
-      liftIO $ F.mpdReturnPair conn pair
 
       -- recieve the chunk into the buffer
-      logInfo "Receiving chunk"
       readSize <- liftIO $ recvCmd conn (castPtr buf) (fromIntegral bufSize)
-
-      logInfo "Handling response"
       if readSize == -1
         then handleAARecvError >> return Nothing
         else return $ Just (ArtworkResponse fileSize (fromIntegral readSize))
@@ -381,4 +383,5 @@ sendCommand' cmd = do
     Resume -> F.mpdRunPause conn (fromBool False)
     Next -> F.mpdRunNext conn
     Previous -> F.mpdRunNext conn
+  -- TODO failMalformed here too? or get rid of it everywhere
   unless (toBool res) $ handleMPDErrors conn
