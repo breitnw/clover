@@ -26,6 +26,7 @@ import Effectful.Dispatch.Dynamic
 import Effectful.Exception
 import Effectful.Reader.Static
 
+import Data.ByteString.Unsafe qualified as BS
 import Effectful.Logger
 import Effectful.Renderer.Effect
 import Effectful.Renderer.Types
@@ -216,7 +217,8 @@ loadTextureBytes' bytes = do
   let name = "<bytes>"
   ren <- asks scRenderer
   logInfo $ "Creating texture: " <> name
-  tex <- liftIO $ BS.useAsCStringLen bytes $ \(cstring, len) -> do
+  -- TODO check this to make sure nothing sus is happening
+  tex <- liftIO $ BS.unsafeUseAsCStringLen bytes $ \(cstring, len) -> do
     -- castptr is sus
     ioStream <- F.sdlIOFromMem (castPtr cstring) (fromIntegral len)
     if ioStream == nullPtr

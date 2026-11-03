@@ -1,5 +1,4 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 {- |
@@ -15,6 +14,8 @@ import Data.ByteString qualified as BS
 import Data.Text qualified as T
 import Effectful
 import Effectful.Concurrent
+import Effectful.Error.Static
+import TextShow qualified as T
 
 import Effectful.Logger
 import Effectful.Logger.Handler.SDL
@@ -31,12 +32,21 @@ main =
           , mcPassword = Nothing
           , mcTimeout = Nothing
           }
-   in runEff
-        . runSDLLogger
-        . runMPDMusicPlayerBlocking cfg
-        $ app
+   in runEff $ runSDLLogger $ do
+        mpdResult <-
+          runErrorNoCallStack @(Annotated MPDServerError) $
+            runMPDMusicPlayerBlocking cfg app
+
+        case mpdResult of
+          Left err -> logError (T.show err) -- do as I say, not as I do
+          Right () -> return ()
 
 app :: (Log :> es, PlayMusic :> es) => Eff es ()
 app = do
-  song <- currentSong
-  logInfo $ (T.pack . show) song
+  maybeSong <- currentSong
+  case maybeSong of
+    Nothing -> logInfo "No song playing"
+    Just song -> do
+      logInfo $ T.showt song
+      art <- loadArtwork (sgID song)
+      return ()
