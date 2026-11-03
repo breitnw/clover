@@ -203,7 +203,7 @@ loadTextureFile' (Path pathText) = do
   -- Make sure the texture was loaded properly
   when (tex == nullPtr) $
     throwIO $
-      SDLException "Failed to initialize renderer"
+      SDLException "Failed to load texture from file"
   return $ Texture (TextureMeta pathText) tex
 
 loadTextureBytes'
@@ -227,7 +227,7 @@ loadTextureBytes' bytes = do
   -- Make sure the texture was loaded properly
   when (tex == nullPtr) $
     throwIO $
-      SDLException "Failed to initialize renderer"
+      SDLException "Failed to load texture from bytes"
   return $ Texture (TextureMeta name) tex
 
 destroyTexture' :: (Log :> es, IOE :> es) => Texture SDL -> Eff es ()

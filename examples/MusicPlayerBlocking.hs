@@ -21,32 +21,67 @@ import Effectful.Logger
 import Effectful.Logger.Handler.SDL
 import Effectful.MusicPlayer.Blocking
 import Effectful.MusicPlayer.Blocking.Handler.MPD
+import Effectful.Renderer
+import Effectful.Renderer.Handler.SDL
 import Util
 
 main :: IO ()
 main =
   let cfg =
         MPDConfig
-          { mcHost = "/tmp/mpd_socket"
-          , mcPort = Nothing
+          { mcHost = "localhost"
+          , mcPort = Just 6600
           , mcPassword = Nothing
-          , mcTimeout = Nothing
+          , mcTimeout = Just 100000
           }
+      meta =
+        SDLMeta
+          { smName = "Renderer Demo"
+          , smVersion = "v0.0.1"
+          , smIdentifier = "com.breitnw.clover-renderer-demo"
+          , smCreator = "Nick Breitling"
+          , smCopyright = "(c) Nick Breitling 2026"
+          , smUrl = "codeberg.org/breitnw/clover"
+          , smType = "mediaplayer"
+          }
+      runApp =
+        runErrorNoCallStack @(Annotated MPDServerError)
+          . runMPDMusicPlayerBlocking cfg
+          . runConcurrent
+          . runSDLRenderer (Vec2 100 100) "album art" meta
    in runEff $ runSDLLogger $ do
-        mpdResult <-
-          runErrorNoCallStack @(Annotated MPDServerError) $
-            runMPDMusicPlayerBlocking cfg app
-
+        mpdResult <- runApp app
         case mpdResult of
           Left err -> logError (T.show err) -- do as I say, not as I do
           Right () -> return ()
 
-app :: (Log :> es, PlayMusic :> es) => Eff es ()
+app :: (Log :> es, PlayMusic :> es, Render SDL :> es) => Eff es ()
 app = do
   maybeSong <- currentSong
+  clear @SDL
+  present @SDL
   case maybeSong of
     Nothing -> logInfo "No song playing"
     Just song -> do
       logInfo $ T.showt song
-      art <- loadArtwork (sgID song)
+      maybeArt <- loadArtworkFull (sgID song)
+      case maybeArt of
+        Nothing -> logInfo "No art"
+        Just art -> do
+          withTexture @SDL (loadTextureBytes art) $ \artTex -> do
+            drawTexture artTex (Rect 0 0 100 100)
+          present @SDL
+          waitForever
       return ()
+  where
+    waitForever = do
+      waitFrame @SDL
+      waitForever
+
+loadArtworkFull :: (PlayMusic :> es => SongID -> Eff es (Maybe BS.ByteString))
+loadArtworkFull songID = do
+  art <- loadArtwork songID
+  case art of
+    Nothing -> return Nothing
+    Just Waiting -> loadArtworkFull songID
+    Just (Done artwork) -> return $ Just artwork
