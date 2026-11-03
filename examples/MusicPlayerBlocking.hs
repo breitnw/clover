@@ -23,7 +23,6 @@ import Effectful.MusicPlayer.Blocking
 import Effectful.MusicPlayer.Blocking.Handler.MPD
 import Effectful.Renderer
 import Effectful.Renderer.Handler.SDL
-import Util
 
 main :: IO ()
 main =

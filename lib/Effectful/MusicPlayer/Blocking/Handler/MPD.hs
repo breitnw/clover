@@ -126,8 +126,8 @@ sliceBuffer (buf, bufSize) offset =
 
 -- | Copy one buffer into another.
 copyBuffer :: CStringLen -> CStringLen -> IO ()
-copyBuffer (srcBuf, srcLen) (dstBuf, dstLen) = do
-  copyBytes srcBuf dstBuf (min (fromIntegral srcLen) (fromIntegral dstLen))
+copyBuffer (dstBuf, dstLen) (srcBuf, srcLen) = do
+  copyBytes dstBuf srcBuf (min (fromIntegral srcLen) (fromIntegral dstLen))
 
 -- LOW-LEVEL ERROR HANDLING ----------------------------------------------------
 
@@ -308,7 +308,7 @@ loadArtwork' songID = do
           -- make a buffer with the proper size
           buf <- liftIO $ mallocBuffer (fromIntegral fileSize)
           -- copy the bytes from the first read into the new buffer
-          liftIO $ copyBuffer initBuf buf
+          liftIO $ copyBuffer buf initBuf
           -- update the state and return if done
           put $ Just (ArtworkState songID fetcher (fromIntegral readSize) buf)
           returnStatus
@@ -324,6 +324,7 @@ loadArtwork' songID = do
         Just (ArtworkState _ _ offset buf@(_, bufSize)) ->
           if offset >= bufSize
             then do
+              logInfo $ "Done! Final offset: " <> T.showt offset
               put @(Maybe ArtworkState) Nothing
               -- what a wonderfully unsafe function
               packedBuf <- liftIO $ BS.unsafePackMallocCStringLen buf
