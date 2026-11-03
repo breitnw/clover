@@ -36,9 +36,10 @@ data PlayMusic :: Effect where
   CurrentSong :: PlayMusic m (Maybe Song)
   -- | Load a chunk of the artwork for the song specified by a song ID.
   --
-  -- If the album art is ready or not present for the requested song, returns
-  -- 'Ready'. If the album art is still loading, returns 'Waiting'.
-  LoadArtwork :: SongID -> PlayMusic m (Status (Maybe BS.ByteString))
+  -- If the album art is ready for a given song, returns 'Ready'. If the album
+  -- art is still loading, returns 'Waiting'. If there is no album art present,
+  -- returns 'Nothing'
+  LoadArtwork :: SongID -> PlayMusic m (Maybe (Status BS.ByteString))
   -- | Send a command to control the backend
   SendCommand :: Command -> PlayMusic m ()
 

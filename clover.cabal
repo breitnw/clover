@@ -66,14 +66,12 @@ library
       sdl3-image >=3.3.0,
       libmpdclient >=2.24
 
-    c-sources:
-      cbits/scratch.c
-
     build-depends: 
       base              >=4.16 && <5,
       effectful        ^>=2.6.1,
       effectful-th     ^>=1.0.0.4,
       text,
+      text-show,
       bytestring,
       containers,
       template-haskell
@@ -87,6 +85,7 @@ library
       -- Effects
       Effectful.MusicPlayer.Blocking,
       Effectful.MusicPlayer.Blocking.Handler.MPD,
+      Effectful.MusicPlayer.Blocking.Handler.MPD.Error,
 
       Effectful.Logger,
       Effectful.Logger.Handler.SDL,
@@ -167,6 +166,7 @@ common example-exe
       effectful ^>=2.6.1,
       bytestring,
       text,
+      text-show,
       clover
 
 executable logger

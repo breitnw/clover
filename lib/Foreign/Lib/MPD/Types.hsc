@@ -10,7 +10,10 @@ Stability   : unstable
 -}
 module Foreign.Lib.MPD.Types where
 
+import Foreign (Storable(..))
 import Foreign.C (CInt (..))
+
+import Foreign.Util
 
 #include <mpd/client.h>
 
@@ -19,7 +22,7 @@ import Foreign.C (CInt (..))
 data MPDConnection
 
 newtype MPDError = MPDError CInt
-  deriving Eq
+  deriving (Eq, Show)
 
 pattern MPD_ERROR_SUCCESS                  = MPDError (#const MPD_ERROR_SUCCESS)
 pattern MPD_ERROR_OOM                      = MPDError (#const MPD_ERROR_OOM)
@@ -35,7 +38,7 @@ pattern MPD_ERROR_SERVER                   = MPDError (#const MPD_ERROR_SERVER)
 -- MPD.Protocol ----------------------------------------------------------------
 
 newtype MPDServerError = MPDServerError CInt
-  deriving Eq
+  deriving (Eq, Show)
 
 pattern MPD_SERVER_ERROR_UNK               = MPDServerError (#const MPD_SERVER_ERROR_UNK)
     
@@ -60,7 +63,7 @@ data MPDSong
 -- MPD.Tag ---------------------------------------------------------------------
 
 newtype MPDTag = MPDTag CInt
-  deriving Eq
+  deriving (Eq, Show)
 
 pattern MPD_TAG_UNKNOWN                    = MPDTag (#const MPD_TAG_UNKNOWN)
 pattern MPD_TAG_ARTIST                     = MPDTag (#const MPD_TAG_ARTIST)
@@ -103,3 +106,21 @@ pattern MPD_TAG_LOCATION                   = MPDTag (#const MPD_TAG_LOCATION)
 pattern MPD_TAG_MOOD                       = MPDTag (#const MPD_TAG_MOOD)
 pattern MPD_TAG_TITLE_SORT                 = MPDTag (#const MPD_TAG_TITLE_SORT)
 pattern MPD_TAG_MUSICBRAINZ_RELEASEGROUPID = MPDTag (#const MPD_TAG_MUSICBRAINZ_RELEASEGROUPID)
+
+-- MPD.Recv --------------------------------------------------------------------
+
+data MPDPair = MPDPair
+  { mpdPairName  :: {-# UNPACK #-} !ConstCString
+  , mpdPairValue :: {-# UNPACK #-} !ConstCString
+  } deriving (Eq, Show)
+
+instance Storable MPDPair where
+  sizeOf _ = #{size struct mpd_pair}
+  alignment _ = #{alignment struct mpd_pair}
+  peek ptr = do
+    name <- #{peek struct mpd_pair, name} ptr
+    value <- #{peek struct mpd_pair, value} ptr
+    return $ MPDPair name value
+  poke ptr (MPDPair name value) = do
+    #{poke struct mpd_pair, name} ptr name
+    #{poke struct mpd_pair, value} ptr value

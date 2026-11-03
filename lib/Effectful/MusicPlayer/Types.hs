@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 {- |
 Module      : Effectful.MusicPlayer.Types
@@ -18,6 +19,8 @@ module Effectful.MusicPlayer.Types (
 ) where
 
 import Data.Text qualified as T
+import TextShow qualified as T
+import TextShow.TH qualified as T
 
 -- | A resource is either being waited on or done
 --
@@ -39,7 +42,9 @@ data MusicPlayerError
   = Timeout
 
 -- | Unique identifier of a song.
-newtype SongID = SongID T.Text deriving (Show)
+newtype SongID = SongID T.Text deriving (Show, Eq)
+
+T.deriveTextShow ''SongID
 
 -- | Data representing a song.
 data Song = Song
@@ -50,8 +55,10 @@ data Song = Song
   , sgID :: SongID
   -- TODO should this include albumart?
   -- TODO or maybe some sort of albumart ID
+  -- > probably not, haskell is GC'd so might as well store a ref
   }
-  deriving (Show)
+
+T.deriveTextShow ''Song
 
 -- | Control command that can be sent to the music backend.
 data Command = Play | Pause | Resume | Next | Previous

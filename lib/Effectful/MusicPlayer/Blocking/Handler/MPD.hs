@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 {- |
 Module      : Effectful.MusicPlayer.Blocking.Handler.MPD
@@ -12,39 +13,83 @@ MPD handler for the 'Effectful.MusicPlayer.PlayMusic' effect.
 module Effectful.MusicPlayer.Blocking.Handler.MPD (
   runMPDMusicPlayerBlocking,
   MPDConfig (..),
+  -- TODO when ServerError is generalized across backends, no longer need to export this
+  -- notably, don't really want to export 'mpdRecoverError'
+  module Effectful.MusicPlayer.Blocking.Handler.MPD.Error,
 ) where
 
-import Control.Monad (unless, when)
-import Foreign (fromBool, toBool)
-import Foreign.C (CInt, CSize, CUInt)
+import Control.Monad (forM, forM_, unless, when)
+import Foreign (
+  castPtr,
+  copyBytes,
+  free,
+  fromBool,
+  mallocArray,
+  peek,
+  plusPtr,
+  toBool,
+ )
+import Foreign.C (CBool, CInt, CSize, CStringLen, CUInt)
 import Foreign.Ptr (Ptr)
 
 import Data.ByteString qualified as BS
+import Data.ByteString.Unsafe qualified as BS
 import Data.Text qualified as T
+import Data.Text.Read qualified as T
 import Effectful
 import Effectful.Dispatch.Dynamic
-import Effectful.Error.Dynamic
+import Effectful.Error.Static
 import Effectful.Exception
 import Effectful.Reader.Static
 import Effectful.State.Static.Local
+import TextShow qualified as T
 
 import Effectful.Logger
 import Effectful.MusicPlayer.Blocking
+import Effectful.MusicPlayer.Blocking.Handler.MPD.Error
 import Foreign.Lib.MPD qualified as F
+import Foreign.TH
 import Foreign.Util
+import Util
+
+-- TODO it would be nice to dynamically change binary limit based on the speed
+-- of the last request
+
+-- TODO check something sensible happens if the connection dies before reading
+-- artwork (since mpdRunCheck doesn't get run)
+
+-- TODO check what happens if both methods fail (no artwork at all)
 
 -- SUPPORTING TYPES ------------------------------------------------------------
 
-type ArtworkFetcher = CUInt -> Ptr () -> CSize -> CInt
+data ArtworkResponse = ArtworkResponse
+  { arFileSize :: CUInt
+  , arReadSize :: CUInt
+  }
+
+type ArtworkFetcher =
+  Ptr F.MPDConnection
+  -- ^ Current connection to the MPD server.
+  -> SongID
+  -- ^ URI of the song.
+  -> Int
+  -- ^ Current offset (into both the remote file and local buffer).
+  -> CStringLen
+  -- ^ Buffer to read into.
+  -> Eff '[Log, Error (Annotated MPDServerError), IOE] (Maybe ArtworkResponse)
 
 -- | Current internal state of artwork fetching process.
 data ArtworkState = ArtworkState
-  { albumArtID :: T.Text
-  , albumArtFetcher :: ArtworkFetcher
-  , albumArtOffset :: CUInt
-  , albumArtBuffer :: Ptr ()
-  , albumArtBufferSize :: Ptr ()
+  { artworkID :: SongID
+  , artworkFetcher :: ArtworkFetcher
+  , artworkOffset :: Int
+  , artworkBuffer :: CStringLen
   }
+
+freeArtworkState :: (IOE :> es, Log :> es) => ArtworkState -> Eff es ()
+freeArtworkState st = do
+  liftIO $ freeBuffer (artworkBuffer st)
+  logInfo "Freed artwork buffer"
 
 -- TODO since MPD is reused in Continuous, might be a better idea to
 data MPDConfig = MPDConfig
@@ -54,32 +99,65 @@ data MPDConfig = MPDConfig
   , mcTimeout :: Maybe Int -- Nothing for default timeout (using MPD_TIMEOUT)
   }
 
+data MPDResources = MPDResources
+  { mrConn :: Ptr F.MPDConnection
+  , mrArtworkInitBuffer :: CStringLen
+  -- ^ Buffer for the first fetch using albumart or readpicture, before we know
+  -- the file size of the artwork
+  }
+
+-- LOW-LEVEL MEMORY MANAGEMENT -------------------------------------------------
+
+mallocBuffer :: Int -> IO CStringLen
+mallocBuffer size = do
+  buf <- mallocArray size
+  return (buf, size)
+
+freeBuffer :: CStringLen -> IO ()
+freeBuffer (buf, _) = free buf
+
+-- | Take the slice of the buffer starting at offset.
+-- If offset exceeds the bounds of the buffer, returns an empty buffer
+sliceBuffer :: CStringLen -> Int -> CStringLen
+sliceBuffer (buf, bufSize) offset =
+  if offset < bufSize
+    then (plusPtr buf offset, bufSize - offset)
+    else (plusPtr buf bufSize, 0)
+
+-- | Copy one buffer into another.
+copyBuffer :: CStringLen -> CStringLen -> IO ()
+copyBuffer (dstBuf, dstLen) (srcBuf, srcLen) = do
+  copyBytes dstBuf srcBuf (min (fromIntegral srcLen) (fromIntegral dstLen))
+
 -- LOW-LEVEL ERROR HANDLING ----------------------------------------------------
 
-newtype MPDException = MPDException T.Text
-  deriving (Show)
+-- | Handle all MPD errors (server and client) by calling 'mpdRecoverError'
+-- and throwing server errors via the Error effect.
+--
+-- Prefer 'mpdFail' when it is certain there is an error.
+mpdHandleErrors
+  :: (IOE :> es, Error (Annotated MPDServerError) :> es)
+  => Ptr F.MPDConnection -> Eff es ()
+mpdHandleErrors conn = do
+  maybeErr <- mpdRecoverError conn
+  forM_ maybeErr throwError
 
-instance Exception MPDException
+mpdFail
+  :: (IOE :> es, Error (Annotated MPDServerError) :> es)
+  => Ptr F.MPDConnection -> Eff es a
+mpdFail conn = do
+  mpdHandleErrors conn
+  error "UNREACHABLE: expected an MPD error but got none"
 
--- libmpdclient likes to return NULL when out of memory, so handle this situation
-handleOOM :: IOE :> es => Ptr a -> Eff es ()
-handleOOM ptr = when (ptr == nullPtr) $ throwIO (MPDException "Out of memory")
-
--- handle errors from mpdConnectionGetError
-handleMPDErrors :: IOE :> es => Ptr F.MPDConnection -> Eff es ()
-handleMPDErrors conn = do
-  err <- liftIO $ F.mpdConnectionGetError conn
-  unless (err == F.MPD_ERROR_SUCCESS) $ do
-    msg <- liftIO $ F.mpdConnectionGetErrorMessage conn
-    -- TODO clear the error in case user recovers
-    msgText <- liftIO $ peekCString msg
-    throwIO $ MPDException msgText
+-- | Throw an exception stating that the current response is malformed.
+mpdErrorMalformed :: IOE :> es => T.Text -> Eff es a
+mpdErrorMalformed msg = throwIO $ Ann msg CMalformed
 
 -- EFFECT HANDLER --------------------------------------------------------------
 
 runMPDMusicPlayerBlocking
   :: forall es a
-   . (IOE :> es, Log :> es)
+   . (IOE :> es, Log :> es, Error (Annotated MPDServerError) :> es)
   => MPDConfig
   -> Eff (PlayMusic : es) a
   -> Eff es a
@@ -91,9 +169,18 @@ runMPDMusicPlayerBlocking (MPDConfig host port password timeout) =
     SendCommand cmd -> sendCommand' cmd
   where
     runMPD op = bracket openMPD closeMPD $ \conn -> do
-      handleMPDErrors conn
-      runReader conn $
-        evalState @(Maybe ArtworkState) Nothing op
+      mpdHandleErrors conn
+      -- configure the binary limit & allocate the artwork init buffer
+      let binaryLimit = 40000
+      blResult <- liftIO $ F.mpdRunBinaryLimit conn (fromIntegral binaryLimit)
+      unless (toBool blResult) $ mpdFail conn
+      logInfo $ "Configured binary limit as " <> T.showt binaryLimit
+
+      bracket (liftIO $ mallocBuffer binaryLimit) (liftIO . freeBuffer) $ \initBuf ->
+        -- run the effect with the initialized resources
+        runReader (MPDResources conn initBuf) $
+          evalState @(Maybe ArtworkState) Nothing $
+            op `finally` (get @(Maybe ArtworkState) >>= mapM freeArtworkState)
 
     -- Open a MPD connection. Only checks for out of memory errors.
     -- Don't want to check for MPD errors yet, otherwise conn will not be freed
@@ -104,7 +191,8 @@ runMPDMusicPlayerBlocking (MPDConfig host port password timeout) =
           hostCStr
           (maybe 0 fromIntegral port)
           (maybe 0 fromIntegral timeout)
-      handleOOM conn
+      -- if the connection is NULL, that means there was no memory left
+      when (conn == nullPtr) $ throwIO (Ann "Out of memory" COutOfMemory)
       return conn
 
     -- Close an MPD connection.
@@ -114,12 +202,15 @@ runMPDMusicPlayerBlocking (MPDConfig host port password timeout) =
       liftIO $ F.mpdConnectionFree conn
 
 currentSong'
-  :: (IOE :> es, Reader (Ptr F.MPDConnection) :> es)
+  :: ( IOE :> es
+     , Reader MPDResources :> es
+     , Error (Annotated MPDServerError) :> es
+     )
   => Eff es (Maybe Song)
 currentSong' = do
-  conn <- ask
+  conn <- asks mrConn
   bracket (getCurrentSong conn) destroySong $ \maybeSong -> do
-    handleMPDErrors conn
+    mpdHandleErrors conn
     case maybeSong of
       Nothing -> return Nothing
       Just song -> do
@@ -138,7 +229,7 @@ currentSong' = do
     getCurrentSong = liftIO . fmap nullToNothing . F.mpdRunCurrentSong
 
     -- Free memory allocated for a song, or pass if the song is Nothing
-    destroySong = liftIO . maybe (return ()) F.mpdSongFree
+    destroySong = liftIO . mapM F.mpdSongFree
 
     -- Convert a tag value (constCString) to text.
     getTagText = liftIO . peekCString
@@ -146,161 +237,171 @@ currentSong' = do
     -- Convert a tag value (constCString) to text, or Nothing if null
     maybeGetTagText = traverse getTagText . nullToNothing
 
--- if rawTag == constNullPtr
---   then return Nothing
---   else Just <$> getTagText rawTag
-
+-- TODO use Alternative to load artwork until done?
 loadArtwork'
-  :: ( IOE :> es
+  :: forall es
+   . ( IOE :> es
      , State (Maybe ArtworkState) :> es
-     , Reader (Ptr F.MPDConnection) :> es
+     , Reader MPDResources :> es
+     , Log :> es
+     , Error (Annotated MPDServerError) :> es
      )
   => SongID
-  -> Eff es (Status (Maybe BS.ByteString))
-loadArtwork' id = do
-  -- TODO
-  return Waiting
+  -> Eff es (Maybe (Status BS.ByteString))
+loadArtwork' songID = do
+  conn <- asks mrConn
+  artworkState <- get
+  case artworkState of
+    -- outcome 1. We are in the process of fetching the artwork already.
+    Just st@(ArtworkState currID fetcher offset buf@(_, bufSize)) | songID == currID -> do
+      logInfo $
+        "Resuming artwork fetch ["
+          <> T.showt offset
+          <> " / "
+          <> T.showt bufSize
+          <> "] for "
+          <> T.showt songID
+      maybeRead <- inject $ fetcher conn songID offset (sliceBuffer buf offset)
+      case maybeRead of
+        Just (ArtworkResponse _ readSize) -> do
+          put $ Just st{artworkOffset = offset + fromIntegral readSize}
+          returnStatus
+        Nothing -> do
+          logWarn
+            "Album art being fetched is no longer present! The album art may have disappeared on disk."
+          -- TODO return Nothing (+ delete buffer) here?
+          return $ Just Waiting
+
+    -- outcome 2. We are not currently fetching the desired artwork.
+    _ -> do
+      logInfo $ "Starting artwork fetch for " <> T.showt songID
+      -- If we have a current artworkState, free the buffer and clear
+      case artworkState of
+        Just st@(ArtworkState (SongID oldSid) _ _ _) -> do
+          logInfo $ "Giving up loading artwork for " <> oldSid
+          freeArtworkState st
+          put @(Maybe ArtworkState) Nothing
+        _ -> return ()
+
+      -- Try to get the artwork from the cache, from albumart, and from
+      -- readpicture in that order
+      tryCache
+        `orElseDo` tryFetcher "albumart" runAlbumArt
+        `orElseDo` tryFetcher "readpicture" runReadPicture
+  where
+    -- Try to get the artwork from the cache.
+    tryCache :: Eff es (Maybe (Status BS.ByteString))
+    tryCache = do
+      logInfo "Trying to fetch artwork from cache"
+      -- TODO
+      return Nothing
+
+    -- Try to get the artwork from a fetch function.
+    tryFetcher :: T.Text -> ArtworkFetcher -> Eff es (Maybe (Status BS.ByteString))
+    tryFetcher fetcherName fetcher = do
+      MPDResources conn initBuf <- ask
+      logInfo $ "Trying fetcher " <> fetcherName
+      maybeRead <- inject $ fetcher conn songID 0 initBuf
+      case maybeRead of
+        Just (ArtworkResponse fileSize readSize) -> do
+          logInfo $ "Initial fetch successful, read " <> T.showt readSize <> " bytes"
+          -- make a buffer with the proper size
+          buf <- liftIO $ mallocBuffer (fromIntegral fileSize)
+          -- copy the bytes from the first read into the new buffer
+          liftIO $ copyBuffer buf initBuf
+          -- update the state and return if done
+          put $ Just (ArtworkState songID fetcher (fromIntegral readSize) buf)
+          returnStatus
+        Nothing -> do
+          logInfo "Initial fetch unsuccessful"
+          return Nothing
+
+    -- if the buffer is full, pack it as a bytestring and return it
+    returnStatus :: Eff es (Maybe (Status BS.ByteString))
+    returnStatus = do
+      st <- get
+      case st of
+        Just (ArtworkState _ _ offset buf@(_, bufSize)) ->
+          if offset >= bufSize
+            then do
+              logInfo $ "Done! Final offset: " <> T.showt offset
+              put @(Maybe ArtworkState) Nothing
+              -- what a wonderfully unsafe function
+              packedBuf <- liftIO $ BS.unsafePackMallocCStringLen buf
+              return $ Just (Done packedBuf)
+            else return $ Just Waiting
+        Nothing -> return Nothing
+
+-- | Artwork fetcher for the albumart method.
+runAlbumArt :: ArtworkFetcher
+runAlbumArt = runArtworkMethod F.mpdSendAlbumArt F.mpdRecvAlbumArt
+
+-- | Artwork fetcher for the readpicture method.
+runReadPicture :: ArtworkFetcher
+runReadPicture = runArtworkMethod F.mpdSendReadPicture F.mpdRecvReadPicture
+
+-- | Create an artwork fetcher given the send and recv commands.
+-- Reads into the start of the provided buffer.
+runArtworkMethod
+  :: (Ptr F.MPDConnection -> ConstCString -> CUInt -> IO CBool)
+  -> (Ptr F.MPDConnection -> Ptr () -> CSize -> IO CInt)
+  -> ArtworkFetcher
+runArtworkMethod sendCmd recvCmd conn (SongID uri) offset (buf, bufSize) = do
+  -- TODO mpd_run_check?
+
+  -- TODO marshalling the URI every time this function is called kinda sucks
+  sendStatus <- liftIO $ withCString uri $ \cUri -> sendCmd conn cUri (fromIntegral offset)
+  unless (toBool sendStatus) $ mpdFail conn
+
+  -- recieve and parse the file size
+  pair <- liftIO $ F.mpdRecvPairNamed conn $(ccstring "size")
+  if pair == nullPtr
+    then handleAARecvError >> return Nothing
+    else do
+      (F.MPDPair _ fileSizeCCStr) <- liftIO $ peek pair
+      fileSizeText <- liftIO $ peekCString fileSizeCCStr
+      liftIO $ F.mpdReturnPair conn pair
+      fileSize <- case T.decimal fileSizeText of
+        Left err ->
+          mpdErrorMalformed $ "File size could not be parsed as decimal: " <> T.pack err
+        Right (val, _) -> return val
+
+      -- recieve the chunk into the buffer
+      readSize <- liftIO $ recvCmd conn (castPtr buf) (fromIntegral bufSize)
+      if readSize == -1
+        then handleAARecvError >> return Nothing
+        else do
+          -- finalize the request
+          finishResult <- liftIO $ F.mpdResponseFinish conn
+          unless (toBool finishResult) $ mpdFail conn
+          return $ Just (ArtworkResponse fileSize (fromIntegral readSize))
+  where
+    -- NOTE Overapproximates the outcomes that are interpreted as "no artwork
+    -- exists," because I'm lazy and because it doesn't really matter...
+    handleAARecvError = do
+      maybeErr <- mpdRecoverError conn
+      case maybeErr of
+        -- for readpicture, `MPD_ERROR_SUCCESS` (with code -1) means no artwork
+        Nothing -> return ()
+        -- for albumart, `MPD_SERVER_ERROR_NO_EXIST` (with code -1) means no artwork
+        Just (Ann _ SNoExist) -> return () -- TODO check some regex on the text?
+        -- all other errors are treated as actual failures
+        Just e -> throwError e
 
 sendCommand'
   :: ( IOE :> es
-     , Reader (Ptr F.MPDConnection) :> es
+     , Reader MPDResources :> es
+     , Error (Annotated MPDServerError) :> es
      )
   => Command
   -> Eff es ()
 sendCommand' cmd = do
-  conn <- ask
+  conn <- asks mrConn
   res <- liftIO $ case cmd of
     Play -> F.mpdRunPlay conn
     Pause -> F.mpdRunPause conn (fromBool True)
     Resume -> F.mpdRunPause conn (fromBool False)
     Next -> F.mpdRunNext conn
     Previous -> F.mpdRunNext conn
-  unless (toBool res) $ handleMPDErrors conn
-
-{-
-getSong'
-  :: (MPD.EMPD :> es, Error MPD.MPDError :> es)
-  => SongID
-  -> Eff es Song
-getSong' (SongID sid) = do
-  -- NOTE this is slow (intermediate string conversion), is there a better way?
-  let path = fromString $ T.unpack sid :: MPD.Path
-  results <- MPD.find (MPD.qFile path)
-  case results of
-    [a] -> return $ asCloverSong a
-    _ ->
-      throwError $
-        MPD.Custom $
-          "Expected exactly one match for track ID "
-            ++ show sid
-            ++ ", got: "
-            ++ show (length results)
-
-getArtwork'
-  :: forall es
-   . ( MPD.EMPD :> es
-     , Error MPD.MPDError :> es
-     , Log :> es
-     , LoadImages :> es
-     )
-  => SongID
-  -> Eff es (Maybe Image)
-getArtwork' (SongID sid) =
-  getArtworkFromCache
-    `orElseDo` getArtworkFromFile
-    `orElseDo` getArtworkFromTag
-  where
-    path = fromString $ T.unpack sid
-
-    -- 1. check the cache to see if we already have the album art downloaded
-    getArtworkFromCache :: Eff es (Maybe Image)
-    getArtworkFromCache = do
-      logInfo "Trying to fetch artwork from cache"
-      return Nothing -- TODO
-
-    -- 2. attempt to get album art file (albumArt)
-    getArtworkFromFile :: Eff es (Maybe Image)
-    getArtworkFromFile = do
-      logInfo "Trying to fetch artwork from file"
-      bytes <-
-        getArtworkBytes
-          (\offset -> (Just <$> MPD.albumArt path offset) `catchError` handler)
-      case bytes of
-        Nothing -> return Nothing
-        Just b -> rightToMaybe <$> loadImageBytes ("file@" <> sid) b
-      where
-        handler _ (MPD.ACK MPD.FileNotFound _) = return Nothing
-        handler _ e = throwError e
-
-    -- 3. attempt to get album art from the binary tag (readPicture)
-    getArtworkFromTag :: Eff es (Maybe Image)
-    getArtworkFromTag = do
-      logInfo "Trying to fetch artwork from tag"
-      bytes <- getArtworkBytes (MPD.readPicture path)
-      case bytes of
-        Nothing -> return Nothing
-        Just b -> rightToMaybe <$> loadImageBytes ("tag@" <> sid) b
-
-sendCommand'
-  :: (MPD.EMPD :> es, Error MPD.MPDError :> es)
-  => Command
-  -> Eff es ()
-sendCommand' PlayPause = MPD.toggle
-sendCommand' Next = MPD.next
-sendCommand' Previous = MPD.previous
-
--- CONVERTERS ------------------------------------------------------------------
-
--- | Convert an MPD song to a Clover song.
-asCloverSong :: MPD.Song -> Song
-asCloverSong s =
-  Song
-    { title = tagValue MPD.Title
-    , artist = tagValue MPD.Artist
-    , album = tagValue MPD.Album
-    , songID = SongID $ MPD.toText $ MPD.sgFilePath s
-    }
-  where
-    tags = MPD.sgTags s
-    tagValue :: MPD.Metadata -> Maybe T.Text
-    tagValue tag = case tags !? tag of
-      -- Use the first tag if one exists
-      Just (val : _) -> Just $ MPD.toText val
-      -- If there are 0 values or the tag doesn't exist, return Nothing
-      _ -> Nothing
-
--- ARTWORK HELPERS -------------------------------------------------------------
-
--- TODO would Data.ByteString.Lazy be faster?
--- Or alternatively, accumulate a list of strict ByteStrings before using `fromChunks`
-
--- | Given a function to read a chunk of the artwork into a 'ByteString',
--- retrieve the entire artwork
-getArtworkBytes
-  :: forall es
-   . (MPD.EMPD :> es, Error MPD.MPDError :> es, Log :> es)
-  => (Integer -> Eff es (Maybe MPD.AlbumArtChunk))
-  -- ^ Command to get a chunk of the album art (either readPicture or albumArt)
-  -> Eff es (Maybe BS.ByteString)
-  -- ^ Full album art as raw bytes
-getArtworkBytes getAlbumArtChunk = go BS.empty
-  where
-    go :: BS.ByteString -> Eff es (Maybe BS.ByteString)
-    go acc = do
-      -- query mpd for the chunk
-      let offset = BS.length acc
-      chunk <- getAlbumArtChunk (fromIntegral offset)
-      case chunk of
-        Nothing -> return Nothing
-        Just (MPD.AlbumArtChunk fileSize' _ bytes) -> do
-          let fileSize = fromInteger fileSize'
-          let chunkSize = BS.length bytes
-          -- report progress
-          let progress = div (100 * (offset + chunkSize)) fileSize
-          logInfo $ T.append "progress: " (T.pack $ show progress) -- TODO might be wise to remove this, since there's a lot of coercions
-          -- append to the string and repeat
-          let acc' = acc <> bytes
-          if offset + chunkSize >= fileSize
-            then return $ Just acc'
-            else go acc'
--}
+  -- TODO failMalformed here too? or get rid of it everywhere
+  unless (toBool res) $ mpdFail conn
