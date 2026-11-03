@@ -52,6 +52,14 @@ import Foreign.TH
 import Foreign.Util
 import Util
 
+-- TODO it would be nice to dynamically change binary limit based on the speed
+-- of the last request
+
+-- TODO check something sensible happens if the connection dies before reading
+-- artwork (since mpdRunCheck doesn't get run)
+
+-- TODO check what happens if both methods fail (no artwork at all)
+
 -- SUPPORTING TYPES ------------------------------------------------------------
 
 data ArtworkResponse = ArtworkResponse
@@ -119,33 +127,34 @@ copyBuffer :: CStringLen -> CStringLen -> IO ()
 copyBuffer (srcBuf, srcLen) (dstBuf, dstLen) = do
   copyBytes srcBuf dstBuf (min (fromIntegral srcLen) (fromIntegral dstLen))
 
--- | Copy a buffer into a ByteString
-
 -- LOW-LEVEL ERROR HANDLING ----------------------------------------------------
-
--- TODO also clear errors here
--- TODO split MPD errors into recoverable and unrecoverable
--- -> maybe do recoverable errors in an Error effect, unrecoverable as exceptions?
--- -> could also throw unrecoverable errors directly in E.getMPDError
 
 -- | Handle all MPD errors (server and client) by calling 'mpdRecoverError'
 -- and throwing server errors via the Error effect.
-handleMPDErrors
+--
+-- Prefer 'mpdFail' when it is certain there is an error.
+mpdHandleErrors
   :: (IOE :> es, Error (Annotated MPDServerError) :> es)
   => Ptr F.MPDConnection -> Eff es ()
-handleMPDErrors conn = do
+mpdHandleErrors conn = do
   maybeErr <- mpdRecoverError conn
   maybe (return ()) throwError maybeErr
 
+mpdFail
+  :: (IOE :> es, Error (Annotated MPDServerError) :> es)
+  => Ptr F.MPDConnection -> Eff es a
+mpdFail conn = do
+  mpdHandleErrors conn
+  error "UNREACHABLE: expected an MPD error but got none"
+
 -- | Throw an exception stating that the current response is malformed.
-failMalformed :: IOE :> es => T.Text -> Eff es a
-failMalformed msg = throwIO $ Ann msg CMalformed
+mpdErrorMalformed :: IOE :> es => T.Text -> Eff es a
+mpdErrorMalformed msg = throwIO $ Ann msg CMalformed
 
 -- EFFECT HANDLER --------------------------------------------------------------
 
 runMPDMusicPlayerBlocking
   :: forall es a
-  -- TODO i don't think server error should be here
    . (IOE :> es, Log :> es, Error (Annotated MPDServerError) :> es)
   => MPDConfig
   -> Eff (PlayMusic : es) a
@@ -158,13 +167,11 @@ runMPDMusicPlayerBlocking (MPDConfig host port password timeout) =
     SendCommand cmd -> sendCommand' cmd
   where
     runMPD op = bracket openMPD closeMPD $ \conn -> do
-      handleMPDErrors conn
+      mpdHandleErrors conn
       -- configure the binary limit & allocate the artwork init buffer
-      let binaryLimit = 8192
+      let binaryLimit = 40000
       blResult <- liftIO $ F.mpdRunBinaryLimit conn (fromIntegral binaryLimit)
-      unless (toBool blResult) $ do
-        handleMPDErrors conn
-        failMalformed "binarylimit status was False, but no error detected"
+      unless (toBool blResult) $ mpdFail conn
       logInfo $ "Configured binary limit as " <> T.showt binaryLimit
 
       bracket (liftIO $ mallocBuffer binaryLimit) (liftIO . freeBuffer) $ \initBuf ->
@@ -200,7 +207,7 @@ currentSong'
 currentSong' = do
   conn <- asks mrConn
   bracket (getCurrentSong conn) destroySong $ \maybeSong -> do
-    handleMPDErrors conn
+    mpdHandleErrors conn
     case maybeSong of
       Nothing -> return Nothing
       Just song -> do
@@ -239,7 +246,6 @@ loadArtwork'
   => SongID
   -> Eff es (Maybe (Status BS.ByteString))
 loadArtwork' songID = do
-  logInfo $ "Loading artwork for " <> T.showt songID
   conn <- asks mrConn
   artworkState <- get
   case artworkState of
@@ -289,6 +295,7 @@ loadArtwork' songID = do
         Just (ArtworkResponse fileSize readSize) -> do
           logInfo "Fetch successful"
           -- make a buffer with the proper size
+          -- TODO XXX FIXME !!!!!!!!!!!!!!!! NOT FREED ON ERROR
           buf <- liftIO $ mallocBuffer (fromIntegral fileSize)
           -- copy the bytes from the first read into the new buffer
           liftIO $ copyBuffer initBuf buf
@@ -333,10 +340,7 @@ runArtworkMethod sendCmd recvCmd conn (SongID uri) offset (buf, bufSize) = do
 
   -- TODO marshalling the URI every time this function is called kinda sucks
   sendStatus <- liftIO $ withCString uri $ \cUri -> sendCmd conn cUri (fromIntegral offset)
-  unless (toBool sendStatus) $ do
-    handleMPDErrors conn
-    -- TODO maybe a different failure than malformed, this seems like more of an internal thing
-    failMalformed "Send status was False, but no error detected"
+  unless (toBool sendStatus) $ mpdFail conn
 
   -- recieve and parse the file size
   pair <- liftIO $ F.mpdRecvPairNamed conn $(ccstring "size")
@@ -347,14 +351,19 @@ runArtworkMethod sendCmd recvCmd conn (SongID uri) offset (buf, bufSize) = do
       fileSizeText <- liftIO $ peekCString fileSizeCCStr
       liftIO $ F.mpdReturnPair conn pair
       fileSize <- case T.decimal fileSizeText of
-        Left err -> failMalformed $ "File size could not be parsed as decimal: " <> T.pack err
+        Left err ->
+          mpdErrorMalformed $ "File size could not be parsed as decimal: " <> T.pack err
         Right (val, _) -> return val
 
       -- recieve the chunk into the buffer
       readSize <- liftIO $ recvCmd conn (castPtr buf) (fromIntegral bufSize)
       if readSize == -1
         then handleAARecvError >> return Nothing
-        else return $ Just (ArtworkResponse fileSize (fromIntegral readSize))
+        else do
+          -- finalize the request
+          finishResult <- liftIO $ F.mpdResponseFinish conn
+          unless (toBool finishResult) $ mpdFail conn
+          return $ Just (ArtworkResponse fileSize (fromIntegral readSize))
   where
     -- NOTE Overapproximates the outcomes that are interpreted as "no artwork
     -- exists," because I'm lazy and because it doesn't really matter...
@@ -384,4 +393,4 @@ sendCommand' cmd = do
     Next -> F.mpdRunNext conn
     Previous -> F.mpdRunNext conn
   -- TODO failMalformed here too? or get rid of it everywhere
-  unless (toBool res) $ handleMPDErrors conn
+  unless (toBool res) $ mpdFail conn
