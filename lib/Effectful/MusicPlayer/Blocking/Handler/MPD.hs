@@ -18,7 +18,7 @@ module Effectful.MusicPlayer.Blocking.Handler.MPD (
   module Effectful.MusicPlayer.Blocking.Handler.MPD.Error,
 ) where
 
-import Control.Monad (unless, when)
+import Control.Monad (forM, forM_, unless, when)
 import Foreign (
   castPtr,
   copyBytes,
@@ -78,9 +78,6 @@ type ArtworkFetcher =
   -- ^ Buffer to read into.
   -> Eff '[Log, Error (Annotated MPDServerError), IOE] (Maybe ArtworkResponse)
 
--- | A buffer (pointer to allocated memory and size of that memory)
--- type Buffer = (Ptr (), CSize)
-
 -- | Current internal state of artwork fetching process.
 data ArtworkState = ArtworkState
   { artworkID :: SongID
@@ -88,6 +85,11 @@ data ArtworkState = ArtworkState
   , artworkOffset :: Int
   , artworkBuffer :: CStringLen
   }
+
+freeArtworkState :: (IOE :> es, Log :> es) => ArtworkState -> Eff es ()
+freeArtworkState st = do
+  liftIO $ freeBuffer (artworkBuffer st)
+  logInfo "Freed artwork buffer"
 
 -- TODO since MPD is reused in Continuous, might be a better idea to
 data MPDConfig = MPDConfig
@@ -138,7 +140,7 @@ mpdHandleErrors
   => Ptr F.MPDConnection -> Eff es ()
 mpdHandleErrors conn = do
   maybeErr <- mpdRecoverError conn
-  maybe (return ()) throwError maybeErr
+  forM_ maybeErr throwError
 
 mpdFail
   :: (IOE :> es, Error (Annotated MPDServerError) :> es)
@@ -177,7 +179,8 @@ runMPDMusicPlayerBlocking (MPDConfig host port password timeout) =
       bracket (liftIO $ mallocBuffer binaryLimit) (liftIO . freeBuffer) $ \initBuf ->
         -- run the effect with the initialized resources
         runReader (MPDResources conn initBuf) $
-          evalState @(Maybe ArtworkState) Nothing op
+          evalState @(Maybe ArtworkState) Nothing $
+            op `finally` (get @(Maybe ArtworkState) >>= mapM freeArtworkState)
 
     -- Open a MPD connection. Only checks for out of memory errors.
     -- Don't want to check for MPD errors yet, otherwise conn will not be freed
@@ -226,7 +229,7 @@ currentSong' = do
     getCurrentSong = liftIO . fmap nullToNothing . F.mpdRunCurrentSong
 
     -- Free memory allocated for a song, or pass if the song is Nothing
-    destroySong = liftIO . maybe (return ()) F.mpdSongFree
+    destroySong = liftIO . mapM F.mpdSongFree
 
     -- Convert a tag value (constCString) to text.
     getTagText = liftIO . peekCString
@@ -250,15 +253,23 @@ loadArtwork' songID = do
   artworkState <- get
   case artworkState of
     -- outcome 1. We are in the process of fetching the artwork already.
-    Just st@(ArtworkState currID fetcher offset buf) | songID == currID -> do
-      logInfo $ "Resuming artwork fetch for " <> T.showt songID
+    Just st@(ArtworkState currID fetcher offset buf@(_, bufSize)) | songID == currID -> do
+      logInfo $
+        "Resuming artwork fetch ["
+          <> T.showt offset
+          <> " / "
+          <> T.showt bufSize
+          <> "] for "
+          <> T.showt songID
       maybeRead <- inject $ fetcher conn songID offset (sliceBuffer buf offset)
       case maybeRead of
         Just (ArtworkResponse _ readSize) -> do
           put $ Just st{artworkOffset = offset + fromIntegral readSize}
           returnStatus
         Nothing -> do
-          logWarn "Read chunk size of 0! Trying to continue..." -- TODO should this fail?
+          logWarn
+            "Album art being fetched is no longer present! The album art may have disappeared on disk."
+          -- TODO return Nothing (+ delete buffer) here?
           return $ Just Waiting
 
     -- outcome 2. We are not currently fetching the desired artwork.
@@ -266,9 +277,9 @@ loadArtwork' songID = do
       logInfo $ "Starting artwork fetch for " <> T.showt songID
       -- If we have a current artworkState, free the buffer and clear
       case artworkState of
-        Just (ArtworkState (SongID oldSid) _ _ buf) -> do
+        Just st@(ArtworkState (SongID oldSid) _ _ _) -> do
           logInfo $ "Giving up loading artwork for " <> oldSid
-          liftIO $ freeBuffer buf
+          freeArtworkState st
           put @(Maybe ArtworkState) Nothing
         _ -> return ()
 
@@ -293,9 +304,8 @@ loadArtwork' songID = do
       maybeRead <- inject $ fetcher conn songID 0 initBuf
       case maybeRead of
         Just (ArtworkResponse fileSize readSize) -> do
-          logInfo "Fetch successful"
+          logInfo $ "Initial fetch successful, read " <> T.showt readSize <> " bytes"
           -- make a buffer with the proper size
-          -- TODO XXX FIXME !!!!!!!!!!!!!!!! NOT FREED ON ERROR
           buf <- liftIO $ mallocBuffer (fromIntegral fileSize)
           -- copy the bytes from the first read into the new buffer
           liftIO $ copyBuffer initBuf buf
@@ -303,7 +313,7 @@ loadArtwork' songID = do
           put $ Just (ArtworkState songID fetcher (fromIntegral readSize) buf)
           returnStatus
         Nothing -> do
-          logInfo "Fetch unsuccessful"
+          logInfo "Initial fetch unsuccessful"
           return Nothing
 
     -- if the buffer is full, pack it as a bytestring and return it
