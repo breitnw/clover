@@ -66,9 +66,6 @@ library
       sdl3-image >=3.3.0,
       libmpdclient >=2.24
 
-    c-sources:
-      cbits/scratch.c
-
     build-depends: 
       base              >=4.16 && <5,
       effectful        ^>=2.6.1,
