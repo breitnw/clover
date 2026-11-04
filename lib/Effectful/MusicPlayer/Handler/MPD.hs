@@ -2,7 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 {- |
-Module      : Effectful.MusicPlayer.Blocking.Handler.MPD
+Module      : Effectful.MusicPlayer.Handler.MPD
 Copyright   : (c) Nick Breitling 2026
 License     : GPL v3 (see LICENSE)
 Maintainer  : Nick Breitling <breitling.nw@gmail.com>
@@ -10,12 +10,12 @@ Stability   : unstable
 
 MPD handler for the 'Effectful.MusicPlayer.PlayMusic' effect.
 -}
-module Effectful.MusicPlayer.Blocking.Handler.MPD (
-  runMPDMusicPlayerBlocking,
+module Effectful.MusicPlayer.Handler.MPD (
+  runMPDMusicPlayer,
   MPDConfig (..),
   -- TODO when ServerError is generalized across backends, no longer need to export this
   -- notably, don't really want to export 'mpdRecoverError'
-  module Effectful.MusicPlayer.Blocking.Handler.MPD.Error,
+  module Effectful.MusicPlayer.Handler.MPD.Error,
 ) where
 
 import Control.Monad (forM, forM_, unless, when)
@@ -45,8 +45,8 @@ import Effectful.State.Static.Local
 import TextShow qualified as T
 
 import Effectful.Logger
-import Effectful.MusicPlayer.Blocking
-import Effectful.MusicPlayer.Blocking.Handler.MPD.Error
+import Effectful.MusicPlayer
+import Effectful.MusicPlayer.Handler.MPD.Error
 import Foreign.Lib.MPD qualified as F
 import Foreign.TH
 import Foreign.Util
@@ -155,13 +155,13 @@ mpdErrorMalformed msg = throwIO $ Ann msg CMalformed
 
 -- EFFECT HANDLER --------------------------------------------------------------
 
-runMPDMusicPlayerBlocking
+runMPDMusicPlayer
   :: forall es a
    . (IOE :> es, Log :> es, Error (Annotated MPDServerError) :> es)
   => MPDConfig
   -> Eff (PlayMusic : es) a
   -> Eff es a
-runMPDMusicPlayerBlocking (MPDConfig host port password timeout) =
+runMPDMusicPlayer (MPDConfig host port password timeout) =
   -- TODO set password
   reinterpret_ runMPD $ \case
     CurrentSong -> currentSong'

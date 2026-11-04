@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 {- |
-Module      : Effectful.MusicPlayer.Blocking.Effect
+Module      : Effectful.MusicPlayer.Effect
 Copyright   : (c) Nick Breitling 2026
 License     : GPL v3 (see LICENSE)
 Maintainer  : Nick Breitling <breitling.nw@gmail.com>
@@ -9,7 +9,7 @@ Stability   : unstable
 
 MPD effect with blocking operations.
 -}
-module Effectful.MusicPlayer.Blocking.Effect (
+module Effectful.MusicPlayer.Effect (
   PlayMusic (..),
   currentSong,
   loadArtwork,

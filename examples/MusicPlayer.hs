@@ -19,8 +19,8 @@ import TextShow qualified as T
 
 import Effectful.Logger
 import Effectful.Logger.Handler.SDL
-import Effectful.MusicPlayer.Blocking
-import Effectful.MusicPlayer.Blocking.Handler.MPD
+import Effectful.MusicPlayer
+import Effectful.MusicPlayer.Handler.MPD
 import Effectful.Renderer
 import Effectful.Renderer.Handler.SDL
 
@@ -45,7 +45,7 @@ main =
           }
       runApp =
         runErrorNoCallStack @(Annotated MPDServerError)
-          . runMPDMusicPlayerBlocking cfg
+          . runMPDMusicPlayer cfg
           . runConcurrent
           . runSDLRenderer (Vec2 100 100) "album art" meta
    in runEff $ runSDLLogger $ do

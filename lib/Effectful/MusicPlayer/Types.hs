@@ -19,7 +19,6 @@ module Effectful.MusicPlayer.Types (
 ) where
 
 import Data.Text qualified as T
-import TextShow qualified as T
 import TextShow.TH qualified as T
 
 -- | A resource is either being waited on or done

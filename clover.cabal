@@ -83,9 +83,8 @@ library
       Foreign.Util,
 
       -- Effects
-      Effectful.MusicPlayer.Blocking,
-      Effectful.MusicPlayer.Blocking.Handler.MPD,
-      Effectful.MusicPlayer.Blocking.Handler.MPD.Error,
+      Effectful.MusicPlayer,
+      Effectful.MusicPlayer.Handler.MPD,
 
       Effectful.Logger,
       Effectful.Logger.Handler.SDL,
@@ -100,8 +99,9 @@ library
 
     other-modules:    
       -- Effects
-      Effectful.MusicPlayer.Blocking.Effect,
+      Effectful.MusicPlayer.Effect,
       Effectful.MusicPlayer.Types,
+      Effectful.MusicPlayer.Handler.MPD.Error,
 
       Effectful.Logger.Effect,
 
@@ -185,6 +185,6 @@ executable mpd
     import:  example-exe
     main-is: MPD.hs
 
-executable music-player-blocking
+executable music-player
     import:  example-exe
-    main-is: MusicPlayerBlocking.hs
+    main-is: MusicPlayer.hs
