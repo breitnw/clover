@@ -171,7 +171,7 @@ runMPDMusicPlayerBlocking (MPDConfig host port password timeout) =
     runMPD op = bracket openMPD closeMPD $ \conn -> do
       mpdHandleErrors conn
       -- configure the binary limit & allocate the artwork init buffer
-      let binaryLimit = 40000
+      let binaryLimit = 400000
       blResult <- liftIO $ F.mpdRunBinaryLimit conn (fromIntegral binaryLimit)
       unless (toBool blResult) $ mpdFail conn
       logInfo $ "Configured binary limit as " <> T.showt binaryLimit
