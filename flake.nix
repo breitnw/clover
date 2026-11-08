@@ -64,6 +64,9 @@
             # Dependencies for SDL3_Image
             pkgs.sdl3-image
 
+            # Dependencies for SDL3_TTF
+            pkgs.sdl3-ttf
+
             # Dependencies for libmpdclient
             pkgs.libmpdclient
           ];

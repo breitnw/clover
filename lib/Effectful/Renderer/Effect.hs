@@ -13,16 +13,23 @@ module Effectful.Renderer.Effect (
   clear,
   waitFrame,
   present,
+  loadTextureFileEx,
+  loadTextureBytesEx,
   loadTextureFile,
   loadTextureBytes,
   destroyTexture,
   drawTexture,
+  loadText,
+  destroyText,
+  drawText,
+  setDrawColor,
 ) where
 
 import Data.ByteString qualified as BS
 import Effectful
 import Effectful.TH
 
+import Data.Text qualified as T
 import Effectful.Renderer.Types
 import Util
 
@@ -35,13 +42,17 @@ data Render a :: Effect where
   -- | Wait until the next frame.
   WaitFrame :: Render a m ()
   -- | Load a texture from a file path, returning an opaque handle to that texture.
-  LoadTextureFile
-    :: Path
+  LoadTextureFileEx
+    :: TextureOptions
+    -- ^ Options for the creation of the texture
+    -> Path
     -- ^ Path of the image to load.
     -> Render a m (Texture a)
   -- | Load a texture from a ByteString, returning an opaque handle to that texture.
-  LoadTextureBytes
-    :: BS.ByteString
+  LoadTextureBytesEx
+    :: TextureOptions
+    -- ^ Options for the creation of the texture
+    -> BS.ByteString
     -- ^ Contents of the image to load.
     -> Render a m (Texture a)
   DestroyTexture
@@ -55,5 +66,19 @@ data Render a :: Effect where
     -> Rect Float
     -- ^ Destination rectangle the texture should be drawn to.
     -> Render a m ()
+  LoadText :: T.Text -> Color -> Render a m (Text a)
+  DestroyText :: Text a -> Render a m ()
+  DrawText :: Text a -> Vec2 Float -> Render a m ()
+  SetDrawColor :: Color -> Render a m ()
 
 makeEffect ''Render
+
+-- | Version of loadTextureFileEx without options.
+loadTextureFile
+  :: forall a es. Render a :> es => Path -> Eff es (Texture a)
+loadTextureFile = loadTextureFileEx @a defaultTextureOptions
+
+-- | Version of loadTextureBytesEx without options.
+loadTextureBytes
+  :: forall a es. Render a :> es => BS.ByteString -> Eff es (Texture a)
+loadTextureBytes = loadTextureBytesEx @a defaultTextureOptions

@@ -12,6 +12,8 @@ Memory management helpers for the Renderer effect.
 module Effectful.Renderer.Managed (
   withTexture,
   withTextures,
+  withText,
+  withTexts,
 ) where
 
 import Effectful
@@ -59,4 +61,39 @@ withTextures loadOps body =
     doAndStoreFinalizer loadOp = do
       tex <- raise loadOp
       modify @[Eff es ()] (destroyTexture tex :)
+      return tex
+
+-- TODO abstract over texture and text
+
+-- | Like 'withTexture', but for Text
+withText
+  :: forall a es b
+   . Render a :> es
+  => Eff es (Text a)
+  -- ^ Operation to load the texture
+  -> (Text a -> Eff es b)
+  -- ^ Operation to run with the texture in scope
+  -> Eff es b
+withText loadOp = bracket loadOp (destroyText @a)
+
+-- | Like 'withTextures', but for Text
+withTexts
+  :: forall a es b t
+   . (Traversable t, Render a :> es)
+  => t (Eff es (Text a))
+  -- ^ Structure of load operations to map over
+  -> (t (Text a) -> Eff es b)
+  -- ^ Operation to run with the text in scope
+  -> Eff es b
+withTexts loadOps body =
+  evalState [] $
+    (traverse doAndStoreFinalizer loadOps >>= raise . body)
+      `finally` (get @[Eff es ()] >>= raise . sequence)
+  where
+    doAndStoreFinalizer
+      :: Eff es (Text a)
+      -> Eff (State [Eff es ()] : es) (Text a)
+    doAndStoreFinalizer loadOp = do
+      tex <- raise loadOp
+      modify @[Eff es ()] (destroyText tex :)
       return tex

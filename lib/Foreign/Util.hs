@@ -24,6 +24,7 @@ type ConstCString = ConstPtr CChar
 
 class IsPtr p where
   withCString :: T.Text -> (p CChar -> IO a) -> IO a
+  withCStringLen :: T.Text -> ((p CChar, Int) -> IO a) -> IO a
   peekCString :: p CChar -> IO T.Text
   nullPtr :: p a
 
@@ -39,10 +40,12 @@ class IsPtr p where
 
 instance IsPtr P.Ptr where
   withCString = T.withCString
+  withCStringLen = T.withCStringLen
   peekCString = T.peekCString
   nullPtr = P.nullPtr
 
 instance IsPtr ConstPtr where
   withCString t op = T.withCString t $ op . ConstPtr
+  withCStringLen t op = T.withCStringLen t (\(s, len) -> op (ConstPtr s, len))
   peekCString = T.peekCString . unConstPtr
   nullPtr = ConstPtr P.nullPtr

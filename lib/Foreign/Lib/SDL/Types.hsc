@@ -93,6 +93,14 @@ pattern SDL_WINDOW_NOT_FOCUSABLE           = SDLWindowFlags (#const SDL_WINDOW_N
 
 data SDLSurface
 
+newtype SDLScaleMode = SDLScaleMode Word64
+  deriving (Eq, Bits)
+
+pattern SDL_SCALEMODE_INVALID   = SDLScaleMode (#const SDL_SCALEMODE_INVALID)
+pattern SDL_SCALEMODE_NEAREST   = SDLScaleMode (#const SDL_SCALEMODE_NEAREST)
+pattern SDL_SCALEMODE_LINEAR    = SDLScaleMode (#const SDL_SCALEMODE_LINEAR)
+pattern SDL_SCALEMODE_PIXELART  = SDLScaleMode (#const SDL_SCALEMODE_LINEAR)
+
 -- SDL3.Render -----------------------------------------------------------------
 
 data SDLRenderer
@@ -184,3 +192,16 @@ instance Storable SDLFRect where
 -- SDL3.IOStream ---------------------------------------------------------------
 
 data SDLIOStream
+
+-- SDL3.BlendMode --------------------------------------------------------------
+
+newtype SDLBlendMode = SDLBlendMode Word32
+
+pattern SDL_BLENDMODE_NONE                = SDLBlendMode (#const SDL_BLENDMODE_NONE)
+pattern SDL_BLENDMODE_BLEND               = SDLBlendMode (#const SDL_BLENDMODE_BLEND)
+pattern SDL_BLENDMODE_BLEND_PREMULTIPLIED = SDLBlendMode (#const SDL_BLENDMODE_BLEND_PREMULTIPLIED)
+pattern SDL_BLENDMODE_ADD                 = SDLBlendMode (#const SDL_BLENDMODE_ADD)
+pattern SDL_BLENDMODE_ADD_PREMULTIPLIED   = SDLBlendMode (#const SDL_BLENDMODE_ADD_PREMULTIPLIED)
+pattern SDL_BLENDMODE_MOD                 = SDLBlendMode (#const SDL_BLENDMODE_MOD)
+pattern SDL_BLENDMODE_MUL                 = SDLBlendMode (#const SDL_BLENDMODE_MUL)
+pattern SDL_BLENDMODE_INVALID             = SDLBlendMode (#const SDL_BLENDMODE_INVALID)

@@ -85,6 +85,10 @@ foreign import capi unsafe "SDL3/SDL.h SDL_SetRenderDrawColor"
     :: Ptr SDLRenderer -> Word8 -> Word8 -> Word8 -> Word8 -> IO CBool
 foreign import capi unsafe "SDL3/SDL.h SDL_DestroyTexture"
   sdlDestroyTexture :: Ptr SDLTexture -> IO ()
+foreign import capi unsafe "SDL3/SDL.h SDL_SetTextureScaleMode"
+  sdlSetTextureScaleMode :: Ptr SDLTexture -> SDLScaleMode -> IO CBool
+foreign import capi unsafe "SDL3/SDL.h SDL_SetTextureBlendMode"
+  sdlSetTextureBlendMode :: Ptr SDLTexture -> SDLBlendMode -> IO CBool
 
 -- SDL3.IOStream ---------------------------------------------------------------
 
