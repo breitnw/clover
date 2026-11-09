@@ -110,13 +110,13 @@ themeNote
 themeNote albumart title artist album =
   ( Layout
       [ (loadTextureBytes @a albumart, Rect 30 31 (114 - 34) (118 - 31))
-      , (loadTextureFile $ Path "data/note/note-one-less-line-out.png", windowRect)
+      , (loadTextureFile $ Path "data/note/note-out.png", windowRect)
       , (loadTextureFile $ Path "data/note/progress-out.png", Rect 37 154 21 26)
       ]
   , Layout
-      [ (loadText @a title textColor, Rect 114 50 0 0) -- HACK w and h ignored
-      , (loadText @a artist textColor, Rect 114 70 0 0)
-      , (loadText @a album textColor, Rect 124 90 0 0)
+      [ (loadText @a title textColor, Rect 114 51 0 0) -- HACK w and h ignored
+      , (loadText @a artist textColor, Rect 114 71 0 0)
+      , (loadText @a album textColor, Rect 124 91 0 0)
       ]
   )
   where
