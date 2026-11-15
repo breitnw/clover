@@ -124,3 +124,7 @@ instance Storable MPDPair where
   poke ptr (MPDPair name value) = do
     #{poke struct mpd_pair, name} ptr name
     #{poke struct mpd_pair, value} ptr value
+
+-- MPD.Status ------------------------------------------------------------------
+
+data MPDStatus

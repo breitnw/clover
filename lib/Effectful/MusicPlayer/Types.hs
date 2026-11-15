@@ -8,7 +8,7 @@ License     : GPL v3 (see LICENSE)
 Maintainer  : Nick Breitling <breitling.nw@gmail.com>
 Stability   : unstable
 
-Data definitions for MusicPlayer effect
+Data definitions for MusicPlayer effects
 -}
 module Effectful.MusicPlayer.Types (
   Status (..),

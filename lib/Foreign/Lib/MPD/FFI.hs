@@ -68,22 +68,6 @@ foreign import capi unsafe "mpd/song.h mpd_song_get_duration_ms"
 
 -- MPD.ReadPicture -------------------------------------------------------------
 
--- foreign import capi unsafe "mpd/readpicture.h mpd_run_readpicture"
---   mpdReadPicture
---     :: Ptr MPDConnection
---     -- ^ A valid and connected MPDConnection
---     -> ConstCString
---     -- ^ The URI of the song
---     -> CUInt
---     -- ^ Offset to read from
---     -> Ptr ()
---     -- ^ An already allocated buffer, the size must be the same or greater than
---     -- the binary chunk size (default 8192, can be set with binarylimit command)
---     -> CSize
---     -- ^ Size of the allocated buffer
---     -> IO CInt
---     -- ^ Read size on success, -1 on failure
-
 -- | Read album art from a tag.
 foreign import capi unsafe "mpd/readpicture.h mpd_send_readpicture"
   mpdSendReadPicture
@@ -115,22 +99,6 @@ foreign import capi unsafe "mpd/readpicture.h mpd_recv_readpicture"
     -- ^ Read size on success, -1 on failure
 
 -- MPD.AlbumArt ----------------------------------------------------------------
-
--- foreign import capi unsafe "mpd/albumart.h mpd_run_albumart"
---   mpdAlbumArt
---     :: Ptr MPDConnection
---     -- ^ A valid and connected MPDConnection
---     -> ConstCString
---     -- ^ The URI of the song
---     -> CUInt
---     -- ^ Offset to read from
---     -> Ptr ()
---     -- ^ An already allocated buffer, the size must be the same or greater than
---     -- the binary chunk size (default 8192, can be set with binarylimit command)
---     -> CSize
---     -- ^ Size of the allocated buffer
---     -> IO CInt
---     -- ^ Read size on success, -1 on failure
 
 -- | Read album art from a file.
 foreign import capi unsafe "mpd/albumart.h mpd_send_albumart"
@@ -176,3 +144,14 @@ foreign import capi unsafe "mpd/response.h mpd_response_finish"
 
 foreign import capi unsafe "mpd/binary.h mpd_run_binarylimit"
   mpdRunBinaryLimit :: Ptr MPDConnection -> CUInt -> IO CBool
+
+-- MPD.Status ------------------------------------------------------------------
+
+foreign import capi unsafe "mpd/status.h mpd_run_status"
+  mpdRunStatus :: Ptr MPDConnection -> IO (Ptr MPDStatus)
+foreign import capi unsafe "mpd/status.h mpd_status_free"
+  mpdStatusFree :: Ptr MPDStatus -> IO ()
+foreign import capi unsafe "mpd/status.h mpd_status_get_volume"
+  mpdStatusGetVolume :: Ptr MPDStatus -> IO CInt
+foreign import capi unsafe "mpd/status.h mpd_status_get_repeat"
+  mpdStatusGetRepeat :: Ptr MPDStatus -> IO CBool

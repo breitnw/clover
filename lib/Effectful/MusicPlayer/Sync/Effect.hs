@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 {- |
-Module      : Effectful.MusicPlayer.Effect
+Module      : Effectful.MusicPlayer.Sync.Effect
 Copyright   : (c) Nick Breitling 2026
 License     : GPL v3 (see LICENSE)
 Maintainer  : Nick Breitling <breitling.nw@gmail.com>
@@ -9,15 +9,12 @@ Stability   : unstable
 
 MPD effect with blocking operations.
 -}
-module Effectful.MusicPlayer.Effect (
-  PlayMusic (..),
+module Effectful.MusicPlayer.Sync.Effect (
+  PlayMusicSync (..),
   currentSong,
   loadArtwork,
   sendCommand,
 ) where
-
--- TODO we don't really need a bytestring for LoadArtwork, just hand off the raw
--- pointer? saves a huge memory copy, but costs some manual memory management
 
 import Data.ByteString qualified as BS
 import Effectful
@@ -29,18 +26,18 @@ import Effectful.MusicPlayer.Types
 --
 -- Implementors of this interface may be blocking. Scheduling should be handled
 -- by the user of the effect.
-data PlayMusic :: Effect where
+data PlayMusicSync :: Effect where
   -- | Get the currently playing song.
   --
   -- If there is no song currently playing, returns Nothing.
-  CurrentSong :: PlayMusic m (Maybe Song)
+  CurrentSong :: PlayMusicSync m (Maybe Song)
   -- | Load a chunk of the artwork for the song specified by a song ID.
   --
   -- If the album art is ready for a given song, returns 'Ready'. If the album
   -- art is still loading, returns 'Waiting'. If there is no album art present,
   -- returns 'Nothing'
-  LoadArtwork :: SongID -> PlayMusic m (Maybe (Status BS.ByteString))
+  LoadArtwork :: SongID -> PlayMusicSync m (Maybe (Status BS.ByteString))
   -- | Send a command to control the backend
-  SendCommand :: Command -> PlayMusic m ()
+  SendCommand :: Command -> PlayMusicSync m ()
 
-makeEffect ''PlayMusic
+makeEffect ''PlayMusicSync

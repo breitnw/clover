@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 {- |
-Module      : Effectful.MusicPlayer.Handler.MPD.Error
+Module      : Effectful.MusicPlayer.Sync.Handler.MPD.Error
 Copyright   : (c) Nick Breitling 2026
 License     : GPL v3 (see LICENSE)
 Maintainer  : Nick Breitling <breitling.nw@gmail.com>
@@ -9,7 +9,7 @@ Stability   : unstable
 
 Higher-level errors for MPD
 -}
-module Effectful.MusicPlayer.Handler.MPD.Error (
+module Effectful.MusicPlayer.Sync.Handler.MPD.Error (
   MPDClientError (..),
   MPDServerError (..),
   Annotated (..),

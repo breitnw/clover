@@ -21,8 +21,8 @@ import TextShow qualified as T
 
 import Effectful.Logger
 import Effectful.Logger.Handler.SDL
-import Effectful.MusicPlayer
-import Effectful.MusicPlayer.Handler.MPD
+import Effectful.MusicPlayer.Sync
+import Effectful.MusicPlayer.Sync.Handler.MPD
 import Effectful.Renderer
 import Effectful.Renderer.Handler.SDL
 
@@ -30,7 +30,7 @@ import Util
 
 windowSize :: Vec2 Int
 -- windowSize = Vec2 196 196
-windowSize = Vec2 200 200
+windowSize = Vec2 300 300
 
 windowRect :: Rect Float
 windowRect = let Vec2 w h = windowSize in Rect 0 0 (fromIntegral w) (fromIntegral h)
@@ -69,7 +69,7 @@ main =
           }
       runApp =
         runErrorNoCallStack @(Annotated MPDServerError)
-          . runMPDMusicPlayer cfg
+          . runMPDMusicPlayerSync cfg
           . runConcurrent
           . runSDLRenderer windowSize "album art" meta
           . runFailIO
@@ -83,21 +83,47 @@ main =
 newtype Layout a = Layout [(a, Rect Float)]
   deriving (Functor, Foldable, Traversable)
 
+themeFish
+  :: forall a es
+   . Render a :> es
+  => BS.ByteString
+  -> T.Text
+  -> T.Text
+  -> T.Text
+  -> (Layout (Eff es (Texture a)), Layout (Eff es (Text a)))
+themeFish albumart _title _artist _album =
+  ( Layout
+      [ (loadTextureBytes @a albumart, Rect 99 102 (143 - 99) (150 - 102))
+      ,
+        ( loadTextureFile $
+            Path "/home/breitnw/Desktop/clover/themes/fish/fishh.png"
+        , Rect 0 0 320 240
+        )
+      ]
+  , Layout []
+  )
+
 themeNoa
   :: forall a es
    . Render a :> es
-  => BS.ByteString -> Layout (Eff es (Texture a))
-themeNoa albumart =
-  Layout
-    [ (loadTextureBytes @a albumart, albumArtRect)
-    , -- ,
-      --   ( loadTextureFileEx
-      --       TextureOptions{tBlendMode = Just BModeMultiply}
-      --       (Path "data/noa/out/shadows.png")
-      --   , windowRect
-      --   )
-      (loadTextureFile $ Path "data/noa/out/foreground.png", windowRect)
-    ]
+  => BS.ByteString
+  -> T.Text
+  -> T.Text
+  -> T.Text
+  -> (Layout (Eff es (Texture a)), Layout (Eff es (Text a)))
+themeNoa albumart _title _artist _album =
+  ( Layout
+      [ (loadTextureBytes @a albumart, albumArtRect)
+      , -- ,
+        --   ( loadTextureFileEx
+        --       TextureOptions{tBlendMode = Just BModeMultiply}
+        --       (Path "data/noa/out/shadows.png")
+        --   , windowRect
+        --   )
+        (loadTextureFile $ Path "data/noa.png", windowRect)
+      ]
+  , Layout []
+  )
 
 themeNote
   :: forall a es
@@ -124,7 +150,7 @@ themeNote albumart title artist album =
 
 app
   :: forall a es
-   . (Log :> es, PlayMusic :> es, Render a :> es, Fail :> es)
+   . (Log :> es, PlayMusicSync :> es, Render a :> es, Fail :> es)
   => Eff es ()
 app = do
   clear @a
@@ -136,7 +162,7 @@ app = do
       album = maybe "No album" id (sgAlbum song)
 
   Just albumart <- loadArtworkFull (sgID song)
-  let (textures, texts) = themeNote @a albumart title artist album
+  let (textures, texts) = themeFish @a albumart title artist album
   withTexts texts $ \rtexts ->
     withTextures textures $ \rtextures ->
       loop (rtextures, rtexts)
@@ -154,7 +180,8 @@ loop l@((Layout textures), (Layout texts)) = do
   waitFrame @a
   loop l
 
-loadArtworkFull :: (PlayMusic :> es => SongID -> Eff es (Maybe BS.ByteString))
+loadArtworkFull
+  :: (PlayMusicSync :> es => SongID -> Eff es (Maybe BS.ByteString))
 loadArtworkFull songID = do
   art <- loadArtwork songID
   case art of

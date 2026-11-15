@@ -2,20 +2,20 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 {- |
-Module      : Effectful.MusicPlayer.Handler.MPD
+Module      : Effectful.MusicPlayer.Sync.Handler.MPD
 Copyright   : (c) Nick Breitling 2026
 License     : GPL v3 (see LICENSE)
 Maintainer  : Nick Breitling <breitling.nw@gmail.com>
 Stability   : unstable
 
-MPD handler for the 'Effectful.MusicPlayer.PlayMusic' effect.
+MPD handler for the 'Effectful.MusicPlayer.Sync.PlayMusicSync' effect.
 -}
-module Effectful.MusicPlayer.Handler.MPD (
-  runMPDMusicPlayer,
+module Effectful.MusicPlayer.Sync.Handler.MPD (
+  runMPDMusicPlayerSync,
   MPDConfig (..),
   -- TODO when ServerError is generalized across backends, no longer need to export this
   -- notably, don't really want to export 'mpdRecoverError'
-  module Effectful.MusicPlayer.Handler.MPD.Error,
+  module Effectful.MusicPlayer.Sync.Handler.MPD.Error,
 ) where
 
 import Control.Monad (forM, forM_, unless, when)
@@ -45,8 +45,8 @@ import Effectful.State.Static.Local
 import TextShow qualified as T
 
 import Effectful.Logger
-import Effectful.MusicPlayer
-import Effectful.MusicPlayer.Handler.MPD.Error
+import Effectful.MusicPlayer.Sync
+import Effectful.MusicPlayer.Sync.Handler.MPD.Error
 import Foreign.Lib.MPD qualified as F
 import Foreign.TH
 import Foreign.Util
@@ -61,6 +61,8 @@ import Util
 -- TODO check what happens if both methods fail (no artwork at all)
 
 -- SUPPORTING TYPES ------------------------------------------------------------
+
+-- TODO pull these out into a "shared" module if we keep Async.Handler.MPD
 
 data ArtworkResponse = ArtworkResponse
   { arFileSize :: CUInt
@@ -155,13 +157,13 @@ mpdErrorMalformed msg = throwIO $ Ann msg CMalformed
 
 -- EFFECT HANDLER --------------------------------------------------------------
 
-runMPDMusicPlayer
+runMPDMusicPlayerSync
   :: forall es a
    . (IOE :> es, Log :> es, Error (Annotated MPDServerError) :> es)
   => MPDConfig
-  -> Eff (PlayMusic : es) a
+  -> Eff (PlayMusicSync : es) a
   -> Eff es a
-runMPDMusicPlayer (MPDConfig host port password timeout) =
+runMPDMusicPlayerSync (MPDConfig host port password timeout) =
   -- TODO set password
   reinterpret_ runMPD $ \case
     CurrentSong -> currentSong'

@@ -83,8 +83,11 @@ library
       Foreign.Util,
 
       -- Effects
-      Effectful.MusicPlayer,
-      Effectful.MusicPlayer.Handler.MPD,
+      Effectful.MusicPlayer.Sync,
+      Effectful.MusicPlayer.Sync.Handler.MPD,
+
+      Effectful.MusicPlayer.Async,
+      Effectful.MusicPlayer.Async.Handler.MPD,
 
       Effectful.Logger,
       Effectful.Logger.Handler.SDL,
@@ -100,9 +103,10 @@ library
 
     other-modules:    
       -- Effects
-      Effectful.MusicPlayer.Effect,
+      Effectful.MusicPlayer.Sync.Effect,
+      Effectful.MusicPlayer.Async.Effect,
       Effectful.MusicPlayer.Types,
-      Effectful.MusicPlayer.Handler.MPD.Error,
+      Effectful.MusicPlayer.Sync.Handler.MPD.Error,
 
       Effectful.Logger.Effect,
 
