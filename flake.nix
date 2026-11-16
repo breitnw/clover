@@ -23,6 +23,7 @@
         overrides = self: super: {
           SDL3 = pkgs.sdl3;
           SDL3_image = pkgs.sdl3-image;
+          SDL3_ttf = pkgs.sdl3-ttf;
           libmpdclient = pkgs.libmpdclient;
         };
 
@@ -66,6 +67,7 @@
 
             # Dependencies for SDL3_TTF
             pkgs.sdl3-ttf
+            pkgs.plutosvg
 
             # Dependencies for libmpdclient
             pkgs.libmpdclient
