@@ -30,8 +30,9 @@ import Util
 
 windowSize :: Vec2 Int
 -- windowSize = Vec2 196 196
--- windowSize = Vec2 300 300
-windowSize = Vec2 200 200
+windowSize = Vec2 300 300
+
+-- windowSize = Vec2 200 200
 
 windowRect :: Rect Float
 windowRect = let Vec2 w h = windowSize in Rect 0 0 (fromIntegral w) (fromIntegral h)
@@ -76,7 +77,7 @@ main =
           . runMPDMusicPlayerAsync @SDL cfg
           . runFailIO
    in runEff $ runSDLLogger $ do
-        runApp (appNote @SDL)
+        runApp (appFelt @SDL)
 
 -- a static or dynamic thing that can be drawn at some position
 data Drawable b m a
@@ -140,22 +141,9 @@ draw (Item (DDynText op) (Rect x y _ _)) = do
 --   , Layout []
 --   )
 
--- themeNote
---   :: forall a es
---    . Render a :> es
---   => [Item SDL (Eff es) (Eff es (Texture a))]
--- themeNote =
---   [ Item (DDynTexture currentArtwork) (Rect 30 31 (114 - 34) (118 - 31))
---   , Item (DStatic $ loadTextureFile $ Path "data/note/note-out.png") windowRect
---   , Item (DDynText )
---   , (loadText @a title textColor, Rect 114 51 0 0) -- HACK w and h ignored
---   , (loadText @a artist textColor, Rect 114 71 0 0)
---   , (loadText @a album textColor, Rect 124 91 0 0)
---   ]
---   where
---     textColor = Color 105 106 106 130
-
 type TextureMap a = M.Map T.Text (Texture a)
+
+-- note theme ------------------------------------------------------------------
 
 appNote
   :: forall a es
@@ -185,13 +173,53 @@ loopNote texMap = do
   case albumArt of
     Nothing -> return ()
     Just aa -> drawTexture aa (Rect 30 31 (114 - 34) (118 - 31))
-  drawTexture (texMap M.! "background") windowRect
+  drawTexture (texMap M.! "background") (Rect 0 0 200 200)
   drawTexture
     (texMap M.! "progress")
     (Rect (fromInteger (truncate (lerp 40 160 completion))) 154 21 26)
   present @a
   waitFrame @a
   loopNote texMap
+
+-- felt theme ------------------------------------------------------------------
+
+appFelt
+  :: forall a es
+   . (Log :> es, Render a :> es, PlayMusicAsync a :> es, Fail :> es)
+  => Eff es ()
+appFelt =
+  let staticTextures =
+        M.fromList
+          [ ("frame", loadTextureFile @a $ Path "data/felt/out-new.png")
+          , ("progress", loadTextureFile @a $ Path "data/felt/button-out.png")
+          ]
+   in withTextures staticTextures $ do
+        loopFelt
+
+loopFelt
+  :: forall a es
+   . (Log :> es, Render a :> es, PlayMusicAsync a :> es)
+  => TextureMap a
+  -> Eff es ()
+loopFelt texMap = do
+  status <- currentStatus @a
+  song <- currentSong @a
+  completion <- completionPercentage @a
+
+  clear @a
+  albumArt <- currentArtwork @a
+  case albumArt of
+    Nothing -> return ()
+    Just aa -> drawTexture aa (Rect 50 20 160 160)
+  drawTexture (texMap M.! "frame") (Rect 0 0 257 237)
+  drawTexture
+    (texMap M.! "progress")
+    (Rect (fromInteger (truncate (lerp 10 80 completion))) 187 40 40)
+  present @a
+  waitFrame @a
+  loopFelt texMap
+
+-- helper stuff ----------------------------------------------------------------
 
 completionPercentage
   :: forall a es
