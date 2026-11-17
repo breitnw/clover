@@ -279,7 +279,10 @@ currentStatus' = do
     Nothing -> return defaultPlayerStatus -- if there's nothing in the channel, just return the default status
     Just status -> do
       currentTime <- getPOSIXTime
-      let timeDiff = currentTime - psTimestamp status
+      let timeDiff =
+            if psState status == Playing
+              then currentTime - psTimestamp status
+              else 0
       -- TODO should the timestamp be updated too? unclear if this could lead to
       -- confusion, like users seeing that the status is out of date and trying
       -- to get the diff themselves
@@ -297,3 +300,5 @@ sendCommand'
   -> Eff es ()
 sendCommand' cmd = do
   error "unimplemented (sendCommand')"
+
+-- FIXME texture doesn't get cleared when not present

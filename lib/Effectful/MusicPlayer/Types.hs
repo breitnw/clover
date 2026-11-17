@@ -63,10 +63,13 @@ data Song = Song
 T.deriveTextShow ''Song
 
 data PlayerState = Playing | Paused | Stopped
+  deriving (Eq)
 
 data SingleState = SingleOff | SingleOn | SingleOneshot | SingleUnavailable
+  deriving (Eq)
 
 data ConsumeState = ConsumeOff | ConsumeOn | ConsumeOneshot | ConsumeUnavailable
+  deriving (Eq)
 
 data PlayerStatus = PlayerStatus
   { psState :: PlayerState
