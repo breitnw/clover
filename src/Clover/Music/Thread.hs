@@ -21,6 +21,6 @@ runMusicThread = _
 
 -- | The music thread, given the required context.
 musicThread
-  :: (PlayMusic :> es, Concurrent :> es)
+  :: (PlayMusicSync :> es, Concurrent :> es)
   => Eff es ()
 musicThread = _

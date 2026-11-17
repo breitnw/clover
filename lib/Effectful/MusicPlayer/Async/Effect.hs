@@ -1,3 +1,4 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 {- |
@@ -10,12 +11,13 @@ Stability   : unstable
 module Effectful.MusicPlayer.Async.Effect (
   PlayMusicAsync (..),
   currentSong,
-  loadArtwork,
+  currentStatus,
+  currentArtwork,
   sendCommand,
 ) where
 
-import Data.ByteString qualified as BS
 import Effectful
+import Effectful.Renderer
 import Effectful.TH
 
 import Effectful.MusicPlayer.Types
@@ -23,18 +25,24 @@ import Effectful.MusicPlayer.Types
 -- | Interface implemented by the music player backend.
 --
 -- Implementors of this interface must not be blocking.
-data PlayMusicAsync :: Effect where
+data PlayMusicAsync a :: Effect where
   -- | Get the currently playing song.
   --
   -- If there is no song currently playing, returns Nothing.
-  CurrentSong :: PlayMusicAsync m (Maybe Song)
-  -- | Load a chunk of the artwork for the song specified by a song ID.
+  CurrentSong :: PlayMusicAsync a m (Maybe Song)
+  -- | Get the current player status.
+  CurrentStatus :: PlayMusicAsync a m PlayerStatus
+  -- | Get the artwork for the current song.
   --
-  -- If the album art is ready for a given song, returns 'Ready'. If the album
-  -- art is still loading, returns 'Waiting'. If there is no album art present,
-  -- returns 'Nothing'
-  CurrentArtwork :: SongID -> PlayMusicAsync m (Maybe (Status BS.ByteString))
+  -- If there is artwork present for the current song, returns a texture
+  -- corresponding with that artwork.
+  --
+  -- If the newest artwork has not loaded yet, this function may return the
+  -- previous artwork (or Nothing if none was present). This enables seamless
+  -- transitions between songs in an album, but may cause wonky behavior if
+  -- loading is slow.
+  CurrentArtwork :: PlayMusicAsync a m (Maybe (Texture a))
   -- | Send a command to control the backend
-  SendCommand :: Command -> PlayMusicAsync m ()
+  SendCommand :: Command -> PlayMusicAsync a m ()
 
 makeEffect ''PlayMusicAsync

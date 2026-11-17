@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 {- |
 Module      : Effectful.MusicPlayer.Sync.Handler.MPD.Error
@@ -21,6 +22,7 @@ import Foreign (Ptr)
 import Data.Text qualified as T
 import Effectful
 import Effectful.Exception
+import TextShow.TH as T
 
 import Foreign.Lib.MPD qualified as F
 import Foreign.Util
@@ -31,6 +33,8 @@ import Foreign.Util
 -- | Annotate a value with some text metadata.
 data Annotated a = Ann T.Text a
   deriving (Show)
+
+T.deriveTextShow ''Annotated
 
 -- | A problem arose with the client's connection to the server; MPD needs to restart.
 data MPDClientError
@@ -51,6 +55,8 @@ data MPDClientError
   | -- | Connection closed by MPD
     CClosed
   deriving (Show)
+
+T.deriveTextShow ''MPDClientError
 
 -- TODO if client errors are not TRULY fatal, update the style guide accordingly
 -- I think a better framing would be:
@@ -82,6 +88,10 @@ data MPDServerError
   | SPlayerSync
   | SExist
   deriving (Show)
+
+T.deriveTextShow ''MPDServerError
+
+instance Exception (Annotated MPDServerError)
 
 -- | Get the current MPD error and attempt to recover the MPD connection.
 --

@@ -12,6 +12,7 @@ MPD effect with blocking operations.
 module Effectful.MusicPlayer.Sync.Effect (
   PlayMusicSync (..),
   currentSong,
+  currentStatus,
   loadArtwork,
   sendCommand,
 ) where
@@ -31,12 +32,14 @@ data PlayMusicSync :: Effect where
   --
   -- If there is no song currently playing, returns Nothing.
   CurrentSong :: PlayMusicSync m (Maybe Song)
+  -- | Get the current player status.
+  CurrentStatus :: PlayMusicSync m PlayerStatus
   -- | Load a chunk of the artwork for the song specified by a song ID.
   --
   -- If the album art is ready for a given song, returns 'Ready'. If the album
   -- art is still loading, returns 'Waiting'. If there is no album art present,
   -- returns 'Nothing'
-  LoadArtwork :: SongID -> PlayMusicSync m (Maybe (Status BS.ByteString))
+  LoadArtwork :: SongID -> PlayMusicSync m (Maybe (LoadStatus BS.ByteString))
   -- | Send a command to control the backend
   SendCommand :: Command -> PlayMusicSync m ()
 

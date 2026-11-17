@@ -128,3 +128,27 @@ instance Storable MPDPair where
 -- MPD.Status ------------------------------------------------------------------
 
 data MPDStatus
+
+newtype MPDState = MPDState CInt
+  deriving (Eq, Show)
+
+pattern MPD_STATE_UNKNOWN = MPDState (#const MPD_STATE_UNKNOWN)
+pattern MPD_STATE_STOP    = MPDState (#const MPD_STATE_STOP)
+pattern MPD_STATE_PLAY    = MPDState (#const MPD_STATE_PLAY)
+pattern MPD_STATE_PAUSE   = MPDState (#const MPD_STATE_PAUSE)
+
+newtype MPDSingleState = MPDSingleState CInt
+  deriving (Eq, Show)
+
+pattern MPD_SINGLE_OFF     = MPDSingleState (#const MPD_SINGLE_OFF)
+pattern MPD_SINGLE_ON      = MPDSingleState (#const MPD_SINGLE_ON)
+pattern MPD_SINGLE_ONESHOT = MPDSingleState (#const MPD_SINGLE_ONESHOT)
+pattern MPD_SINGLE_UNKNOWN = MPDSingleState (#const MPD_SINGLE_UNKNOWN)
+
+newtype MPDConsumeState = MPDConsumeState CInt
+  deriving (Eq, Show)
+
+pattern MPD_CONSUME_OFF     = MPDConsumeState (#const MPD_CONSUME_OFF)
+pattern MPD_CONSUME_ON      = MPDConsumeState (#const MPD_CONSUME_ON)
+pattern MPD_CONSUME_ONESHOT = MPDConsumeState (#const MPD_CONSUME_ONESHOT)
+pattern MPD_CONSUME_UNKNOWN = MPDConsumeState (#const MPD_CONSUME_UNKNOWN)

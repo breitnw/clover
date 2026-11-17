@@ -151,7 +151,22 @@ foreign import capi unsafe "mpd/status.h mpd_run_status"
   mpdRunStatus :: Ptr MPDConnection -> IO (Ptr MPDStatus)
 foreign import capi unsafe "mpd/status.h mpd_status_free"
   mpdStatusFree :: Ptr MPDStatus -> IO ()
+
+-- TODO use
 foreign import capi unsafe "mpd/status.h mpd_status_get_volume"
   mpdStatusGetVolume :: Ptr MPDStatus -> IO CInt
 foreign import capi unsafe "mpd/status.h mpd_status_get_repeat"
   mpdStatusGetRepeat :: Ptr MPDStatus -> IO CBool
+foreign import capi unsafe "mpd/status.h mpd_status_get_random"
+  mpdStatusGetRandom :: Ptr MPDStatus -> IO CBool
+foreign import capi unsafe "mpd/status.h mpd_status_get_elapsed_ms"
+  mpdStatusGetElapsedMs :: Ptr MPDStatus -> IO CUInt
+foreign import capi unsafe "mpd/status.h mpd_status_get_state"
+  mpdStatusGetState :: Ptr MPDStatus -> IO MPDState
+foreign import capi unsafe "mpd/status.h mpd_status_get_consume"
+  mpdStatusGetConsume :: Ptr MPDStatus -> IO MPDConsumeState
+foreign import capi unsafe "mpd/status.h mpd_status_get_single"
+  mpdStatusGetSingle :: Ptr MPDStatus -> IO MPDSingleState
+
+-- foreign import capi unsafe "mpd/status.h mpd_status_get_next_song_id"
+--   mpdStatusGetNextSongID :: Ptr MPDStatus -> IO CBool

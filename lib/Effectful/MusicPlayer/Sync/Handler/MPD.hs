@@ -19,6 +19,7 @@ module Effectful.MusicPlayer.Sync.Handler.MPD (
 ) where
 
 import Control.Monad (forM, forM_, unless, when)
+import Data.Functor ((<&>))
 import Foreign (
   castPtr,
   copyBytes,
@@ -169,6 +170,7 @@ runMPDMusicPlayerSync (MPDConfig host port password timeout) =
     CurrentSong -> currentSong'
     LoadArtwork songID -> loadArtwork' songID
     SendCommand cmd -> sendCommand' cmd
+    CurrentStatus -> currentStatus'
   where
     runMPD op = bracket openMPD closeMPD $ \conn -> do
       mpdHandleErrors conn
@@ -220,9 +222,9 @@ currentSong' = do
         artist <- maybeGetTagText =<< liftIO (F.mpdSongGetTag song F.MPD_TAG_ARTIST 0)
         album <- maybeGetTagText =<< liftIO (F.mpdSongGetTag song F.MPD_TAG_ALBUM 0)
         duration <-
-          -- duration of 0 means unknown
-          (\i -> if i == 0 then Nothing else Just i)
-            . fromIntegral
+          fmap millisToSecsFractional
+            -- duration of 0 means unknown
+            . (\i -> if i == 0 then Nothing else Just i)
             <$> liftIO (F.mpdSongGetDurationMs song)
         songID <- SongID <$> (getTagText =<< liftIO (F.mpdSongGetURI song))
         return $ Just (Song title artist album duration songID)
@@ -249,7 +251,7 @@ loadArtwork'
      , Error (Annotated MPDServerError) :> es
      )
   => SongID
-  -> Eff es (Maybe (Status BS.ByteString))
+  -> Eff es (Maybe (LoadStatus BS.ByteString))
 loadArtwork' songID = do
   conn <- asks mrConn
   artworkState <- get
@@ -292,14 +294,15 @@ loadArtwork' songID = do
         `orElseDo` tryFetcher "readpicture" runReadPicture
   where
     -- Try to get the artwork from the cache.
-    tryCache :: Eff es (Maybe (Status BS.ByteString))
+    tryCache :: Eff es (Maybe (LoadStatus BS.ByteString))
     tryCache = do
       logInfo "Trying to fetch artwork from cache"
       -- TODO
       return Nothing
 
     -- Try to get the artwork from a fetch function.
-    tryFetcher :: T.Text -> ArtworkFetcher -> Eff es (Maybe (Status BS.ByteString))
+    tryFetcher
+      :: T.Text -> ArtworkFetcher -> Eff es (Maybe (LoadStatus BS.ByteString))
     tryFetcher fetcherName fetcher = do
       MPDResources conn initBuf <- ask
       logInfo $ "Trying fetcher " <> fetcherName
@@ -319,7 +322,7 @@ loadArtwork' songID = do
           return Nothing
 
     -- if the buffer is full, pack it as a bytestring and return it
-    returnStatus :: Eff es (Maybe (Status BS.ByteString))
+    returnStatus :: Eff es (Maybe (LoadStatus BS.ByteString))
     returnStatus = do
       st <- get
       case st of
@@ -407,3 +410,60 @@ sendCommand' cmd = do
     Previous -> F.mpdRunNext conn
   -- TODO failMalformed here too? or get rid of it everywhere
   unless (toBool res) $ mpdFail conn
+
+currentStatus'
+  :: ( IOE :> es
+     , Reader MPDResources :> es
+     , Error (Annotated MPDServerError) :> es
+     , Log :> es
+     )
+  => Eff es PlayerStatus
+currentStatus' = do
+  conn <- asks mrConn
+  bracket (getStatus conn) (liftIO . F.mpdStatusFree) $ \status -> do
+    playerState <-
+      liftIO (F.mpdStatusGetState status) >>= \case
+        F.MPD_STATE_PAUSE -> return Paused
+        F.MPD_STATE_PLAY -> return Playing
+        F.MPD_STATE_STOP -> return Stopped
+        s -> do
+          logWarn $ "Unknown player state: " <> T.pack (show s) -- prob fine i really don't want a textshow instance here
+          return Stopped -- show stopped by default (TODO maybe want a louder complaint)
+    progress <-
+      millisToSecsFractional
+        <$> liftIO (F.mpdStatusGetElapsedMs status)
+    repeatState <- liftIO $ F.mpdStatusGetRepeat status
+    randomState <- liftIO $ F.mpdStatusGetRepeat status
+    singleState <-
+      liftIO (F.mpdStatusGetSingle status) <&> \case
+        F.MPD_SINGLE_OFF -> SingleOff
+        F.MPD_SINGLE_ON -> SingleOn
+        F.MPD_SINGLE_ONESHOT -> SingleOneshot
+        _ -> SingleUnavailable
+    consumeState <-
+      liftIO (F.mpdStatusGetConsume status) <&> \case
+        F.MPD_CONSUME_OFF -> ConsumeOff
+        F.MPD_CONSUME_ON -> ConsumeOn
+        F.MPD_CONSUME_ONESHOT -> ConsumeOneshot
+        _ -> ConsumeUnavailable
+    return $
+      PlayerStatus
+        { psState = playerState
+        , psProgress = progress
+        , psRepeat = toBool repeatState
+        , psRandom = toBool randomState
+        , psSingle = singleState
+        , psConsume = consumeState
+        }
+  where
+    getStatus conn = do
+      status <- liftIO (F.mpdRunStatus conn)
+      when (status == nullPtr) (mpdFail conn)
+      return status
+
+-- OTHER STUFF -----------------------------------------------------------------
+
+millisToSecsFractional
+  :: (Integral a, Fractional b)
+  => a -> b
+millisToSecsFractional = (/ 1000.0) . fromIntegral

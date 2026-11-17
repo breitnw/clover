@@ -1,6 +1,8 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE TemplateHaskell #-}
 
+-- TODO maybe move to a Shared directory
+
 {- |
 Module      : Effectful.MusicPlayer.Types
 Copyright   : (c) Nick Breitling 2026
@@ -11,11 +13,14 @@ Stability   : unstable
 Data definitions for MusicPlayer effects
 -}
 module Effectful.MusicPlayer.Types (
-  Status (..),
+  LoadStatus (..),
   SongID (..),
   Song (..),
   Command (..),
-  MusicPlayerError (..),
+  PlayerState (..),
+  SingleState (..),
+  ConsumeState (..),
+  PlayerStatus (..),
 ) where
 
 import Data.Text qualified as T
@@ -24,21 +29,18 @@ import TextShow.TH qualified as T
 -- | A resource is either being waited on or done
 --
 -- Basically just Maybe but with a better name.
-data Status a = Waiting | Done a
+data LoadStatus a = Waiting | Done a
   deriving (Functor, Show, Eq)
 
-instance Applicative Status where
+instance Applicative LoadStatus where
   pure = Done
 
   Done f <*> m = fmap f m
   Waiting <*> _m = Waiting
 
-instance Monad Status where
+instance Monad LoadStatus where
   (Done x) >>= k = k x
   Waiting >>= _ = Waiting
-
-data MusicPlayerError
-  = Timeout
 
 -- | Unique identifier of a song.
 newtype SongID = SongID T.Text deriving (Show, Eq)
@@ -50,7 +52,7 @@ data Song = Song
   { sgTitle :: Maybe T.Text
   , sgArtist :: Maybe T.Text
   , sgAlbum :: Maybe T.Text
-  , sgDurationMillis :: Maybe Int
+  , sgDuration :: Maybe Float
   , sgID :: SongID
   -- TODO should this include albumart?
   -- TODO or maybe some sort of albumart ID
@@ -58,6 +60,27 @@ data Song = Song
   }
 
 T.deriveTextShow ''Song
+
+data PlayerState = Playing | Paused | Stopped
+
+data SingleState = SingleOff | SingleOn | SingleOneshot | SingleUnavailable
+
+data ConsumeState = ConsumeOff | ConsumeOn | ConsumeOneshot | ConsumeUnavailable
+
+data PlayerStatus = PlayerStatus
+  { psState :: PlayerState
+  , psProgress :: Float
+  , psRepeat :: Bool
+  , psRandom :: Bool
+  , psSingle :: SingleState
+  , psConsume :: ConsumeState
+  -- TODO queue information from the state would be good as well
+  }
+
+T.deriveTextShow ''PlayerState
+T.deriveTextShow ''SingleState
+T.deriveTextShow ''ConsumeState
+T.deriveTextShow ''PlayerStatus
 
 -- | Control command that can be sent to the music backend.
 data Command = Play | Pause | Resume | Next | Previous

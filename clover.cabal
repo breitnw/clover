@@ -172,6 +172,7 @@ common example-exe
       effectful ^>=2.6.1,
       bytestring,
       text,
+      containers,
       text-show,
       clover
 
@@ -191,6 +192,10 @@ executable mpd
     import:  example-exe
     main-is: MPD.hs
 
-executable music-player
+executable music-player-sync
     import:  example-exe
-    main-is: MusicPlayer.hs
+    main-is: MusicPlayerSync.hs
+
+executable music-player-async
+    import:  example-exe
+    main-is: MusicPlayerAsync.hs
