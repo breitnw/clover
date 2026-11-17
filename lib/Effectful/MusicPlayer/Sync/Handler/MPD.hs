@@ -18,7 +18,7 @@ module Effectful.MusicPlayer.Sync.Handler.MPD (
   module Effectful.MusicPlayer.Sync.Handler.MPD.Error,
 ) where
 
-import Control.Monad (forM, forM_, unless, when)
+import Control.Monad (forM_, unless, when)
 import Data.Functor ((<&>))
 import Foreign (
   castPtr,
@@ -48,6 +48,7 @@ import TextShow qualified as T
 import Effectful.Logger
 import Effectful.MusicPlayer.Sync
 import Effectful.MusicPlayer.Sync.Handler.MPD.Error
+import Effectful.Timer
 import Foreign.Lib.MPD qualified as F
 import Foreign.TH
 import Foreign.Util
@@ -160,7 +161,7 @@ mpdErrorMalformed msg = throwIO $ Ann msg CMalformed
 
 runMPDMusicPlayerSync
   :: forall es a
-   . (IOE :> es, Log :> es, Error (Annotated MPDServerError) :> es)
+   . (IOE :> es, Log :> es, Error (Annotated MPDServerError) :> es, Time :> es)
   => MPDConfig
   -> Eff (PlayMusicSync : es) a
   -> Eff es a
@@ -416,6 +417,7 @@ currentStatus'
      , Reader MPDResources :> es
      , Error (Annotated MPDServerError) :> es
      , Log :> es
+     , Time :> es
      )
   => Eff es PlayerStatus
 currentStatus' = do
@@ -446,6 +448,7 @@ currentStatus' = do
         F.MPD_CONSUME_ON -> ConsumeOn
         F.MPD_CONSUME_ONESHOT -> ConsumeOneshot
         _ -> ConsumeUnavailable
+    timestamp <- getPOSIXTime
     return $
       PlayerStatus
         { psState = playerState
@@ -454,6 +457,7 @@ currentStatus' = do
         , psRandom = toBool randomState
         , psSingle = singleState
         , psConsume = consumeState
+        , psTimestamp = timestamp
         }
   where
     getStatus conn = do

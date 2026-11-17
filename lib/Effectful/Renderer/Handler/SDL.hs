@@ -219,7 +219,7 @@ clear' = do
 -- TODO check out different options for concurrency, there might be a better way
 -- to utilize Concurrent effect here
 waitFrame' :: Concurrent :> es => Eff es ()
-waitFrame' = threadDelay 1000000
+waitFrame' = threadDelay 100000
 
 present'
   :: ( Reader SDLContext :> es

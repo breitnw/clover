@@ -24,6 +24,7 @@ module Effectful.MusicPlayer.Types (
 ) where
 
 import Data.Text qualified as T
+import Effectful.Timer
 import TextShow.TH qualified as T
 
 -- | A resource is either being waited on or done
@@ -74,13 +75,16 @@ data PlayerStatus = PlayerStatus
   , psRandom :: Bool
   , psSingle :: SingleState
   , psConsume :: ConsumeState
+  , psTimestamp :: POSIXTime
   -- TODO queue information from the state would be good as well
   }
 
 T.deriveTextShow ''PlayerState
 T.deriveTextShow ''SingleState
 T.deriveTextShow ''ConsumeState
-T.deriveTextShow ''PlayerStatus
+
+-- TODO can't for now since POSIXTime does not have TextShow
+-- T.deriveTextShow ''PlayerStatus
 
 -- | Control command that can be sent to the music backend.
 data Command = Play | Pause | Resume | Next | Previous

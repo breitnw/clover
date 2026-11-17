@@ -75,6 +75,7 @@ library
       text-show,
       bytestring,
       containers,
+      time,
       template-haskell
 
     exposed-modules: 
@@ -95,6 +96,8 @@ library
 
       Effectful.Renderer,
       Effectful.Renderer.Handler.SDL,
+
+      Effectful.Timer,
 
       -- FFIs
       Foreign.Lib.SDL,

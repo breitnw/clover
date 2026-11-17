@@ -69,6 +69,7 @@ main =
           }
       runApp =
         runErrorNoCallStack @(Annotated MPDServerError)
+          . runTimer
           . runMPDMusicPlayerSync cfg
           . runConcurrent
           . runSDLRenderer windowSize "album art" meta

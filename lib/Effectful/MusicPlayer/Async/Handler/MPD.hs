@@ -36,6 +36,7 @@ import Effectful.MusicPlayer.Sync qualified as MPS
 import Effectful.MusicPlayer.Sync.Handler.MPD qualified as MPS
 import Effectful.MusicPlayer.Types
 import Effectful.Renderer
+import Effectful.Timer
 
 data MPDLocalState a = MPDState
   { mlsArtwork :: Maybe (Texture a)
@@ -56,6 +57,7 @@ defaultPlayerStatus =
     , psConsume = ConsumeOff
     , psSingle = SingleOff
     , psProgress = 0
+    , psTimestamp = 0
     }
 
 defaultMPDLocalState :: MPDLocalState a
@@ -78,6 +80,7 @@ runMPDMusicPlayerAsync
      , Log :> es
      , Concurrent :> es
      , Render b :> es
+     , Time :> es
      )
   => MPS.MPDConfig
   -> Eff (PlayMusicAsync b : es) a
@@ -112,7 +115,12 @@ runMPDMusicPlayerAsync config =
 
 -- | Run the music player and restart it if the connection is lost
 runMusicPlayerForever
-  :: (Reader MPDSharedState :> es, IOE :> es, Log :> es, Concurrent :> es)
+  :: ( Reader MPDSharedState :> es
+     , IOE :> es
+     , Log :> es
+     , Concurrent :> es
+     , Time :> es
+     )
   => MPS.MPDConfig -> Eff es ()
 runMusicPlayerForever config = do
   runErrorWith handleServerError $ do
@@ -262,13 +270,22 @@ currentStatus'
    . ( Reader MPDSharedState :> es
      , State (MPDLocalState a) :> es
      , Concurrent :> es
+     , Time :> es
      )
   => Eff es PlayerStatus
 currentStatus' = do
   statusMVar <- asks mssStatus
   tryReadMVar statusMVar >>= \case
     Nothing -> return defaultPlayerStatus -- if there's nothing in the channel, just return the default status
-    Just maybeSong -> return maybeSong
+    Just status -> do
+      currentTime <- getPOSIXTime
+      let timeDiff = currentTime - psTimestamp status
+      -- TODO should the timestamp be updated too? unclear if this could lead to
+      -- confusion, like users seeing that the status is out of date and trying
+      -- to get the diff themselves
+      -- TODO Might be better to remove the timestamp from the status altogether, store it separately
+      return
+        status{psProgress = psProgress status + fromRational (toRational timeDiff)}
 
 sendCommand'
   :: forall a es

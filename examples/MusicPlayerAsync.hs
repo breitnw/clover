@@ -24,6 +24,7 @@ import Effectful.MusicPlayer.Async.Handler.MPD
 import Effectful.MusicPlayer.Sync.Handler.MPD qualified as SYNC
 import Effectful.Renderer
 import Effectful.Renderer.Handler.SDL
+import Effectful.Timer
 
 import Util
 
@@ -71,6 +72,7 @@ main =
       runApp =
         runConcurrent
           . runSDLRenderer windowSize "album art" meta
+          . runTimer
           . runMPDMusicPlayerAsync @SDL cfg
           . runFailIO
    in runEff $ runSDLLogger $ do
